@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Gaelic Scores Live – Private Analytics</title>
+  <style>
+    :root { color-scheme: light; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 24px 14px;
+      font-family: Arial, sans-serif;
+      background: #dcebd7;
+      color: #172019;
+    }
+    .shell { width: 100%; max-width: 900px; margin: 0 auto; }
+    .card {
+      background: #fff;
+      border-radius: 18px;
+      padding: 24px;
+      box-shadow: 0 6px 24px rgba(0,0,0,.12);
+      margin-bottom: 16px;
+    }
+    h1 { margin: 0 0 6px; font-size: 28px; }
+    h2 { margin: 0 0 16px; font-size: 20px; }
+    .muted { color: #5c665f; margin: 0 0 18px; }
+    label { display: block; font-weight: 700; margin: 12px 0 6px; }
+    input {
+      width: 100%; padding: 12px; border: 1px solid #b8c3bb;
+      border-radius: 10px; font-size: 16px;
+    }
+    button {
+      border: 0; border-radius: 10px; background: #147d38; color: #fff;
+      padding: 11px 18px; margin-top: 16px; font-size: 15px;
+      font-weight: 700; cursor: pointer;
+    }
+    button.secondary { background: #333; margin: 0; }
+    .error { color: #a11919; margin-top: 12px; min-height: 20px; }
+    .topbar { display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+    .stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    .stat { background: #f0f5f1; border-radius: 14px; padding: 18px; text-align: center; }
+    .number { display: block; color: #147d38; font-size: 34px; font-weight: 800; }
+    .label { display: block; margin-top: 5px; font-size: 14px; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; border-bottom: 1px solid #e0e6e1; padding: 12px 9px; }
+    th { color: #4d5750; font-size: 13px; }
+    a { color: #147d38; font-weight: 700; }
+    #dashboard { display: none; }
+    @media (max-width: 600px) {
+      .card { padding: 18px; }
+      .stats { grid-template-columns: 1fr; }
+      .topbar { align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <section id="loginCard" class="card">
+      <h1>Private Match Analytics</h1>
+      <p class="muted">Sign in to view Gaelic Scores Live figures.</p>
+      <form id="loginForm">
+        <label for="email">Email</label>
+        <input id="email" type="email" autocomplete="username" required>
+        <label for="password">Password</label>
+        <input id="password" type="password" autocomplete="current-password" required>
+        <button type="submit">Sign In</button>
+        <div id="loginError" class="error" aria-live="polite"></div>
+      </form>
+    </section>
+
+    <section id="dashboard">
+      <div class="card topbar">
+        <div>
+          <h1>Gaelic Scores Live</h1>
+          <p class="muted" style="margin:0">Private viewer statistics</p>
+        </div>
+        <button id="signOutButton" class="secondary" type="button">Sign Out</button>
+      </div>
+
+      <div class="card">
+        <h2>All Games</h2>
+        <div class="stats">
+          <div class="stat">
+            <span id="totalViews" class="number">0</span>
+            <span class="label">Total page views</span>
+          </div>
+          <div class="stat">
+            <span id="uniqueViewers" class="number">0</span>
+            <span class="label">Approximate unique devices</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Games</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Match</th><th>Views</th><th>Unique</th><th>Last viewed</th></tr></thead>
+            <tbody id="matchRows"><tr><td colspan="4">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import {
+      getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import {
+      getFirestore, doc, getDoc, getDocs, collection
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyD_TYQ0BQo17KHmaM79c7HM2i6vNUeoLSM",
+      authDomain: "gaelic-stats.firebaseapp.com",
+      projectId: "gaelic-stats",
+      storageBucket: "gaelic-stats.firebasestorage.app",
+      messagingSenderId: "820237571021",
+      appId: "1:820237571021:web:19ecee804e055bbfe42a84"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    const loginCard = document.getElementById("loginCard");
+    const dashboard = document.getElementById("dashboard");
+    const loginForm = document.getElementById("loginForm");
+    const loginError = document.getElementById("loginError");
+
+    loginForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      loginError.textContent = "";
+      try {
+        await signInWithEmailAndPassword(
+          auth,
+          document.getElementById("email").value.trim(),
+          document.getElementById("password").value
+        );
+      } catch (error) {
+        loginError.textContent = "Sign-in failed. Check your email and password.";
+      }
+    });
+
+    document.getElementById("signOutButton").addEventListener("click", () => signOut(auth));
+
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        loginCard.style.display = "block";
+        dashboard.style.display = "none";
+        return;
+      }
+      loginCard.style.display = "none";
+      dashboard.style.display = "block";
+      await loadAnalytics();
+    });
+
+    async function loadAnalytics() {
+      const globalSnapshot = await getDoc(doc(db, "viewAnalytics", "global"));
+      const globalData = globalSnapshot.exists() ? globalSnapshot.data() : {};
+      document.getElementById("totalViews").textContent = globalData.totalViews || 0;
+      document.getElementById("uniqueViewers").textContent = globalData.uniqueViewers || 0;
+
+      const snapshots = await getDocs(collection(db, "matchViewAnalytics"));
+      const games = snapshots.docs.map((item) => item.data());
+      games.sort((a, b) => (b.totalViews || 0) - (a.totalViews || 0));
+
+      const rows = document.getElementById("matchRows");
+      rows.innerHTML = "";
+      if (!games.length) {
+        rows.innerHTML = '<tr><td colspan="4">No views recorded yet.</td></tr>';
+        return;
+      }
+
+      for (const game of games) {
+        const row = document.createElement("tr");
+        const matchId = String(game.matchId || "");
+        const viewedAt = game.lastViewedAt?.toDate?.();
+        const matchName = await getMatchName(matchId);
+        row.innerHTML = `
+          <td><a href="/?match=${encodeURIComponent(matchId)}" target="_blank" rel="noopener">${escapeHtml(matchName)}</a></td>
+          <td>${Number(game.totalViews || 0)}</td>
+          <td>${Number(game.uniqueViewers || 0)}</td>
+          <td>${viewedAt ? viewedAt.toLocaleString() : "–"}</td>
+        `;
+        rows.appendChild(row);
+      }
+    }
+
+    async function getMatchName(matchId) {
+      try {
+        const [matchSnapshot, footballSnapshot] = await Promise.all([
+          getDoc(doc(db, "matches", matchId)),
+          getDoc(doc(db, "footballMatches", matchId))
+        ]);
+        const data = matchSnapshot.exists()
+          ? matchSnapshot.data()
+          : footballSnapshot.exists()
+            ? footballSnapshot.data()
+            : null;
+        if (data) {
+          return `${data.teamName || "Team"} v ${data.oppositionName || "Opposition"}`;
+        }
+      } catch (error) {
+        console.warn("Could not load match names", error);
+      }
+      return matchId;
+    }
+
+    function escapeHtml(value) {
+      return value.replace(/[&<>'"]/g, (character) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;"
+      })[character]);
+    }
+  </script>
+</body>
+</html>

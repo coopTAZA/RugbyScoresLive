@@ -1,0 +1,15 @@
+{
+  "projects": {
+    "default": "football-scores-live-3da9f"
+  },
+  "targets": {
+    "football-scores-live-3da9f": {
+      "hosting": {
+        "rugby": [
+          "rugby-scores-live"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}

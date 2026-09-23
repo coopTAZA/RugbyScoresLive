@@ -1,0 +1,1900 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { doc, setDoc, updateDoc } from "firebase/firestore";
+import { useEffect, useState } from "react";
+import {
+  Alert,
+  ScrollView,
+  Share,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { db } from "../firebaseConfig";
+
+type Sport = "football" | "hurling";
+
+type Action =
+  | "teamPoint"
+  | "teamTwoPointer"
+  | "teamGoal"
+  | "teamWide"
+  | "teamShort"
+  | "teamBlocked"
+  | "teamSaved"
+  | "ownKickoutWon"
+  | "ownKickoutLost"
+  | "oppositionKickoutWon"
+  | "oppositionKickoutLost"
+  | "turnoverWonForced"
+  | "turnoverWonUnforced"
+  | "turnoverLostForced"
+  | "turnoverLostUnforced"
+  | "oppositionPoint"
+  | "oppositionTwoPointer"
+  | "oppositionGoal";
+
+type SavedMatch = {
+  id: string;
+  savedAt: string;
+  sport?: Sport;
+  currentHalf: string;
+  teamName: string;
+  oppositionName: string;
+  teamGoals: number;
+  teamPoints: number;
+  teamScore: number;
+  oppositionGoals: number;
+  oppositionPoints: number;
+  oppositionScore: number;
+  seconds: number;
+  addedSeconds: number;
+  teamScores: number;
+  teamWides: number;
+  teamShorts: number;
+  teamBlocked: number;
+  teamSaved: number;
+  totalShots: number;
+  conversionRate: number;
+  ownKickoutsWon: number;
+  ownKickoutsLost: number;
+  ownKickoutWinRate: number;
+  oppositionKickoutsWon: number;
+  oppositionKickoutsLost: number;
+  oppositionKickoutWinRate: number;
+  turnoverWonForced: number;
+  turnoverWonUnforced: number;
+  turnoverLostForced: number;
+  turnoverLostUnforced: number;
+};
+
+export default function HomeScreen() {
+  const [sport, setSport] = useState<Sport>("football");
+
+  const [seconds, setSeconds] = useState(30 * 60);
+  const [addedSeconds, setAddedSeconds] = useState(0);
+  const [timerRunning, setTimerRunning] = useState(false);
+  const [currentHalf, setCurrentHalf] = useState("1st Half");
+
+  const [liveMatchId, setLiveMatchId] = useState("");
+  const [matchStatus, setMatchStatus] = useState("Not Started");
+  const [showFullStats, setShowFullStats] = useState(true);
+
+  const scoringColours = [
+    { name: "Maroon", colour: "#7a0019" },
+    { name: "Red", colour: "#b00020" },
+    { name: "Black", colour: "#222222" },
+    { name: "White", colour: "#f2f2f2" },
+    { name: "White/Blue", colour: "#4aa3df" },
+    { name: "Blue", colour: "#0057b8" },
+    { name: "Sky Blue", colour: "#4aa3df" },
+    { name: "Green", colour: "#146c2e" },
+    { name: "Lime Green", colour: "#4caf50" },
+    { name: "Yellow", colour: "#d4a900" },
+    { name: "Orange", colour: "#b85c00" },
+    { name: "Purple", colour: "#5b2c83" },
+  ];
+
+  const [leftScoringColourIndex, setLeftScoringColourIndex] = useState(0);
+  const [rightScoringColourIndex, setRightScoringColourIndex] = useState(1);
+
+  const leftScoringColour = scoringColours[leftScoringColourIndex];
+  const rightScoringColour = scoringColours[rightScoringColourIndex];
+
+  const [teamName, setTeamName] = useState("An Tearmainn");
+  const [oppositionName, setOppositionName] = useState("Opposition");
+
+  const [teamScore, setTeamScore] = useState(0);
+  const [teamGoals, setTeamGoals] = useState(0);
+  const [teamPoints, setTeamPoints] = useState(0);
+  const [teamScores, setTeamScores] = useState(0);
+  const [teamWides, setTeamWides] = useState(0);
+  const [teamShorts, setTeamShorts] = useState(0);
+  const [teamBlocked, setTeamBlocked] = useState(0);
+  const [teamSaved, setTeamSaved] = useState(0);
+
+  const [ownKickoutsWon, setOwnKickoutsWon] = useState(0);
+  const [ownKickoutsLost, setOwnKickoutsLost] = useState(0);
+  const [oppositionKickoutsWon, setOppositionKickoutsWon] = useState(0);
+  const [oppositionKickoutsLost, setOppositionKickoutsLost] = useState(0);
+
+  const [turnoverWonForced, setTurnoverWonForced] = useState(0);
+  const [turnoverWonUnforced, setTurnoverWonUnforced] = useState(0);
+  const [turnoverLostForced, setTurnoverLostForced] = useState(0);
+  const [turnoverLostUnforced, setTurnoverLostUnforced] = useState(0);
+
+  const [oppositionScore, setOppositionScore] = useState(0);
+  const [oppositionGoals, setOppositionGoals] = useState(0);
+  const [oppositionPoints, setOppositionPoints] = useState(0);
+
+  const [lastActions, setLastActions] = useState<Action[]>([]);
+  const [savedMatches, setSavedMatches] = useState<SavedMatch[]>([]);
+  const [showSavedMatches, setShowSavedMatches] = useState(false);
+  const [currentMatchLoaded, setCurrentMatchLoaded] = useState(false);
+
+  const isFootball = sport === "football";
+  const restartLabel = isFootball ? "Kickouts" : "Puck Outs";
+  const shortRestartLabel = isFootball ? "KO" : "PO";
+
+  const totalShots = teamScores + teamWides + teamShorts + teamBlocked + teamSaved;
+  const conversionRate =
+    totalShots === 0 ? 0 : Math.round((teamScores / totalShots) * 100);
+
+  const ownKickoutsTotal = ownKickoutsWon + ownKickoutsLost;
+  const ownKickoutWinRate =
+    ownKickoutsTotal === 0
+      ? 0
+      : Math.round((ownKickoutsWon / ownKickoutsTotal) * 100);
+
+  const oppositionKickoutsTotal = oppositionKickoutsWon + oppositionKickoutsLost;
+  const oppositionKickoutWinRate =
+    oppositionKickoutsTotal === 0
+      ? 0
+      : Math.round((oppositionKickoutsWon / oppositionKickoutsTotal) * 100);
+
+  const totalTurnoversWon = turnoverWonForced + turnoverWonUnforced;
+  const totalTurnoversLost = turnoverLostForced + turnoverLostUnforced;
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setInterval>;
+
+    if (timerRunning) {
+      timer = setInterval(() => {
+        setSeconds((value) => {
+          if (value > 0) return value - 1;
+
+          setAddedSeconds((addedValue) => addedValue + 1);
+          return 0;
+        });
+      }, 1000);
+    }
+
+    return () => clearInterval(timer);
+  }, [timerRunning]);
+
+  useEffect(() => {
+    loadSavedMatches();
+    loadCurrentMatch();
+  }, []);
+
+  useEffect(() => {
+    if (!currentMatchLoaded) return;
+
+    const autoSaveCurrentMatch = async () => {
+      const currentMatch = {
+        sport,
+        seconds,
+        addedSeconds,
+        timerRunning: false,
+        currentHalf,
+        matchStatus,
+        leftScoringColourIndex,
+        rightScoringColourIndex,
+        teamName,
+        oppositionName,
+        teamScore,
+        teamGoals,
+        teamPoints,
+        teamScores,
+        teamWides,
+        teamShorts,
+        teamBlocked,
+        teamSaved,
+        ownKickoutsWon,
+        ownKickoutsLost,
+        oppositionKickoutsWon,
+        oppositionKickoutsLost,
+        turnoverWonForced,
+        turnoverWonUnforced,
+        turnoverLostForced,
+        turnoverLostUnforced,
+        oppositionScore,
+        oppositionGoals,
+        oppositionPoints,
+        liveMatchId,
+        showFullStats,
+      };
+
+      await AsyncStorage.setItem("currentMatch", JSON.stringify(currentMatch));
+    };
+
+    autoSaveCurrentMatch();
+  }, [
+    currentMatchLoaded,
+    sport,
+    seconds,
+    addedSeconds,
+    currentHalf,
+    matchStatus,
+    leftScoringColourIndex,
+    rightScoringColourIndex,
+    teamName,
+    oppositionName,
+    teamScore,
+    teamGoals,
+    teamPoints,
+    teamScores,
+    teamWides,
+    teamShorts,
+    teamBlocked,
+    teamSaved,
+    ownKickoutsWon,
+    ownKickoutsLost,
+    oppositionKickoutsWon,
+    oppositionKickoutsLost,
+    turnoverWonForced,
+    turnoverWonUnforced,
+    turnoverLostForced,
+    turnoverLostUnforced,
+    oppositionScore,
+    oppositionGoals,
+    oppositionPoints,
+    liveMatchId,
+    showFullStats,
+  ]);
+
+  useEffect(() => {
+    if (!liveMatchId) return;
+
+    const updateLiveMatch = async () => {
+      try {
+        await updateDoc(doc(db, "matches", liveMatchId), {
+          sport,
+          teamName,
+          oppositionName,
+          teamGoals,
+          teamPoints,
+          teamScore,
+          oppositionGoals,
+          oppositionPoints,
+          oppositionScore,
+          currentHalf,
+          matchStatus,
+          seconds,
+          addedSeconds,
+          teamScores,
+          teamWides,
+          teamShorts,
+          teamBlocked,
+          teamSaved,
+          totalShots,
+          conversionRate,
+          ownKickoutsWon,
+          ownKickoutsLost,
+          ownKickoutsTotal,
+          ownKickoutWinRate,
+          oppositionKickoutsWon,
+          oppositionKickoutsLost,
+          oppositionKickoutsTotal,
+          oppositionKickoutWinRate,
+          turnoverWonForced,
+          turnoverWonUnforced,
+          turnoverLostForced,
+          turnoverLostUnforced,
+          totalTurnoversWon,
+          totalTurnoversLost,
+          updatedAt: new Date().toISOString(),
+        });
+      } catch (error) {
+        console.log("Live match update failed", error);
+      }
+    };
+
+    updateLiveMatch();
+  }, [
+    liveMatchId,
+    sport,
+    teamName,
+    oppositionName,
+    teamGoals,
+    teamPoints,
+    teamScore,
+    oppositionGoals,
+    oppositionPoints,
+    oppositionScore,
+    currentHalf,
+    matchStatus,
+    seconds,
+    addedSeconds,
+    teamScores,
+    teamWides,
+    teamShorts,
+    teamBlocked,
+    teamSaved,
+    totalShots,
+    conversionRate,
+    ownKickoutsWon,
+    ownKickoutsLost,
+    ownKickoutsTotal,
+    ownKickoutWinRate,
+    oppositionKickoutsWon,
+    oppositionKickoutsLost,
+    oppositionKickoutsTotal,
+    oppositionKickoutWinRate,
+    turnoverWonForced,
+    turnoverWonUnforced,
+    turnoverLostForced,
+    turnoverLostUnforced,
+    totalTurnoversWon,
+    totalTurnoversLost,
+  ]);
+
+  const addAction = (action: Action) => {
+    setLastActions((currentActions) => [...currentActions, action]);
+  };
+
+  const formatTime = (totalSeconds: number) => {
+    const minutes = Math.floor(totalSeconds / 60);
+    const secs = totalSeconds % 60;
+
+    return `${minutes.toString().padStart(2, "0")}:${secs
+      .toString()
+      .padStart(2, "0")}`;
+  };
+
+  const formatTimerDisplay = () => {
+    return seconds > 0 ? formatTime(seconds) : formatTime(addedSeconds);
+  };
+
+  const formatShareTime = () => {
+    if (seconds > 0) {
+      return `${currentHalf} - Time Remaining: ${formatTime(seconds)}`;
+    }
+
+    return `${currentHalf} - Added Time: ${formatTime(addedSeconds)}`;
+  };
+
+  const formatGaelicScore = (goals: number, points: number) => {
+    return `${goals}:${points.toString().padStart(2, "0")}`;
+  };
+
+  const formatSavedDate = (dateText: string) => {
+    return new Date(dateText).toLocaleString();
+  };
+
+  const createLiveMatch = async () => {
+    try {
+      const newLiveMatchId = Date.now().toString();
+
+      await setDoc(doc(db, "matches", newLiveMatchId), {
+        sport,
+        teamName,
+        oppositionName,
+        teamGoals,
+        teamPoints,
+        teamScore,
+        oppositionGoals,
+        oppositionPoints,
+        oppositionScore,
+        currentHalf,
+        matchStatus: "Not Started",
+        seconds,
+        addedSeconds,
+        teamScores,
+        teamWides,
+        teamShorts,
+        teamBlocked,
+        teamSaved,
+        totalShots,
+        conversionRate,
+        ownKickoutsWon,
+        ownKickoutsLost,
+        ownKickoutsTotal,
+        ownKickoutWinRate,
+        oppositionKickoutsWon,
+        oppositionKickoutsLost,
+        oppositionKickoutsTotal,
+        oppositionKickoutWinRate,
+        turnoverWonForced,
+        turnoverWonUnforced,
+        turnoverLostForced,
+        turnoverLostUnforced,
+        totalTurnoversWon,
+        totalTurnoversLost,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+
+      setLiveMatchId(newLiveMatchId);
+      setMatchStatus("Not Started");
+
+      Alert.alert("Live Match Created", "This match is now ready for live updates.");
+    } catch (error) {
+      Alert.alert("Live Match Failed", "The live match could not be created.");
+    }
+  };
+
+  const shareLiveLink = async () => {
+    if (!liveMatchId) {
+      Alert.alert("No Live Match", "Create a live match first.");
+      return;
+    }
+
+    const liveLink = `https://gaelic-stats.web.app/?match=${liveMatchId}`;
+
+    const message = `
+🏐 Live Score Link
+
+${teamName} v ${oppositionName}
+
+${liveLink}
+`;
+
+    await Share.share({ message });
+  };
+
+  const startFirstHalf = () => {
+    if (seconds !== 30 * 60 || addedSeconds !== 0 || timerRunning) {
+      Alert.alert("Restart 1st Half?", "This will reset the timer to 30:00.", [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Restart",
+          style: "destructive",
+          onPress: () => {
+            setCurrentHalf("1st Half");
+            setMatchStatus("Match Started");
+            setSeconds(30 * 60);
+            setAddedSeconds(0);
+            setTimerRunning(true);
+          },
+        },
+      ]);
+
+      return;
+    }
+
+    setCurrentHalf("1st Half");
+    setMatchStatus("Match Started");
+    setSeconds(30 * 60);
+    setAddedSeconds(0);
+    setTimerRunning(true);
+  };
+
+  const confirmEndMatch = () => {
+    Alert.alert("End Match?", "This will mark the live score as Full Time.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "End Match",
+        style: "destructive",
+        onPress: () => {
+          setTimerRunning(false);
+          setMatchStatus("Full Time");
+        },
+      },
+    ]);
+  };
+
+  const startSecondHalf = () => {
+    if (currentHalf !== "2nd Half") {
+      Alert.alert("Start 2nd Half?", "This will start the timer at 30:00.", [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Start",
+          onPress: () => {
+            setCurrentHalf("2nd Half");
+            setMatchStatus("2nd Half Started");
+            setSeconds(30 * 60);
+            setAddedSeconds(0);
+            setTimerRunning(true);
+          },
+        },
+      ]);
+
+      return;
+    }
+
+    if (seconds !== 30 * 60 || addedSeconds !== 0 || timerRunning) {
+      Alert.alert("Restart 2nd Half?", "This will reset the timer to 30:00.", [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Restart",
+          style: "destructive",
+          onPress: () => {
+            setCurrentHalf("2nd Half");
+            setMatchStatus("2nd Half Started");
+            setSeconds(30 * 60);
+            setAddedSeconds(0);
+            setTimerRunning(true);
+          },
+        },
+      ]);
+
+      return;
+    }
+
+    setCurrentHalf("2nd Half");
+    setMatchStatus("2nd Half Started");
+    setSeconds(30 * 60);
+    setAddedSeconds(0);
+    setTimerRunning(true);
+  };
+
+  const loadCurrentMatch = async () => {
+    try {
+      const existingCurrentMatch = await AsyncStorage.getItem("currentMatch");
+
+      if (existingCurrentMatch) {
+        const match = JSON.parse(existingCurrentMatch);
+
+        setSport(match.sport || "football");
+        setSeconds(match.seconds ?? 30 * 60);
+        setAddedSeconds(match.addedSeconds || 0);
+        setTimerRunning(false);
+        setCurrentHalf(match.currentHalf || "1st Half");
+        setMatchStatus(match.matchStatus || "Not Started");
+        setLeftScoringColourIndex(match.leftScoringColourIndex || 0);
+        setRightScoringColourIndex(match.rightScoringColourIndex || 1);
+
+        setTeamName(match.teamName || "An Tearmainn");
+        setOppositionName(match.oppositionName || "Opposition");
+
+        setTeamScore(match.teamScore || 0);
+        setTeamGoals(match.teamGoals || 0);
+        setTeamPoints(match.teamPoints || 0);
+        setTeamScores(match.teamScores || 0);
+        setTeamWides(match.teamWides || 0);
+        setTeamShorts(match.teamShorts || 0);
+        setTeamBlocked(match.teamBlocked || 0);
+        setTeamSaved(match.teamSaved || 0);
+
+        setOwnKickoutsWon(match.ownKickoutsWon || 0);
+        setOwnKickoutsLost(match.ownKickoutsLost || 0);
+        setOppositionKickoutsWon(match.oppositionKickoutsWon || 0);
+        setOppositionKickoutsLost(match.oppositionKickoutsLost || 0);
+
+        setTurnoverWonForced(match.turnoverWonForced || 0);
+        setTurnoverWonUnforced(match.turnoverWonUnforced || 0);
+        setTurnoverLostForced(match.turnoverLostForced || 0);
+        setTurnoverLostUnforced(match.turnoverLostUnforced || 0);
+
+        setOppositionScore(match.oppositionScore || 0);
+        setOppositionGoals(match.oppositionGoals || 0);
+        setOppositionPoints(match.oppositionPoints || 0);
+
+        setLiveMatchId(match.liveMatchId || "");
+        setShowFullStats(match.showFullStats ?? true);
+      }
+
+      setCurrentMatchLoaded(true);
+    } catch (error) {
+      setCurrentMatchLoaded(true);
+      Alert.alert("Restore Failed", "The current match could not be restored.");
+    }
+  };
+
+  const loadSavedMatches = async () => {
+    try {
+      const existingMatches = await AsyncStorage.getItem("savedMatches");
+      const matches = existingMatches ? JSON.parse(existingMatches) : [];
+      setSavedMatches(matches);
+    } catch (error) {
+      Alert.alert("Load Failed", "Saved matches could not be loaded.");
+    }
+  };
+
+  const shareSavedMatch = async (match: SavedMatch) => {
+    const savedTime =
+      match.seconds > 0
+        ? `${match.currentHalf || "Match"} - Time Remaining: ${formatTime(
+            match.seconds
+          )}`
+        : `${match.currentHalf || "Match"} - Added Time: ${formatTime(
+            match.addedSeconds || 0
+          )}`;
+
+    const savedSport = match.sport || "football";
+    const savedRestartWord = savedSport === "football" ? "Kickouts" : "Puck Outs";
+    const savedRestartShort = savedSport === "football" ? "KO" : "PO";
+
+    const savedOwnKickoutsTotal = match.ownKickoutsWon + match.ownKickoutsLost;
+    const savedOppKickoutsTotal =
+      match.oppositionKickoutsWon + match.oppositionKickoutsLost;
+
+    const savedTurnoversWon =
+      (match.turnoverWonForced || 0) + (match.turnoverWonUnforced || 0);
+    const savedTurnoversLost =
+      (match.turnoverLostForced || 0) + (match.turnoverLostUnforced || 0);
+
+    const message = `
+🏐 Saved Match Summary
+
+${match.teamName} ${formatGaelicScore(match.teamGoals, match.teamPoints)}
+${match.oppositionName} ${formatGaelicScore(
+      match.oppositionGoals,
+      match.oppositionPoints
+    )}
+
+${savedTime}
+
+📊 Shot Summary
+Scores: ${match.teamScores}
+Total Attempts: ${match.totalShots}
+Shot Conversion: ${match.conversionRate}%
+
+Wides: ${match.teamWides}
+Shorts: ${match.teamShorts}
+Blocked: ${match.teamBlocked}
+Saved: ${match.teamSaved}
+
+📍 ${savedRestartWord}
+Own ${savedRestartShort} Won: ${match.ownKickoutsWon}/${savedOwnKickoutsTotal} - ${
+      match.ownKickoutWinRate
+    }%
+Opp ${savedRestartShort} Won: ${match.oppositionKickoutsWon}/${savedOppKickoutsTotal} - ${
+      match.oppositionKickoutWinRate
+    }%
+
+🔁 Turnovers
+Turn Ov Won: ${savedTurnoversWon}
+Forced: ${match.turnoverWonForced || 0} | Unforced: ${
+      match.turnoverWonUnforced || 0
+    }
+
+Turn Ov Lost: ${savedTurnoversLost}
+Forced: ${match.turnoverLostForced || 0} | Unforced: ${
+      match.turnoverLostUnforced || 0
+    }
+
+Saved: ${formatSavedDate(match.savedAt)}
+`;
+
+    await Share.share({ message });
+  };
+
+  const deleteSavedMatch = async (matchId: string) => {
+    try {
+      const updatedMatches = savedMatches.filter((match) => match.id !== matchId);
+
+      await AsyncStorage.setItem("savedMatches", JSON.stringify(updatedMatches));
+      setSavedMatches(updatedMatches);
+
+      Alert.alert("Deleted", "Saved match deleted.");
+    } catch (error) {
+      Alert.alert("Delete Failed", "The saved match could not be deleted.");
+    }
+  };
+
+  const saveMatch = async () => {
+    try {
+      const savedMatch: SavedMatch = {
+        id: Date.now().toString(),
+        savedAt: new Date().toISOString(),
+        sport,
+        currentHalf,
+        teamName,
+        oppositionName,
+        teamGoals,
+        teamPoints,
+        teamScore,
+        oppositionGoals,
+        oppositionPoints,
+        oppositionScore,
+        seconds,
+        addedSeconds,
+        teamScores,
+        teamWides,
+        teamShorts,
+        teamBlocked,
+        teamSaved,
+        totalShots,
+        conversionRate,
+        ownKickoutsWon,
+        ownKickoutsLost,
+        ownKickoutWinRate,
+        oppositionKickoutsWon,
+        oppositionKickoutsLost,
+        oppositionKickoutWinRate,
+        turnoverWonForced,
+        turnoverWonUnforced,
+        turnoverLostForced,
+        turnoverLostUnforced,
+      };
+
+      const existingMatches = await AsyncStorage.getItem("savedMatches");
+      const matches = existingMatches ? JSON.parse(existingMatches) : [];
+
+      const updatedMatches = [savedMatch, ...matches];
+
+      await AsyncStorage.setItem("savedMatches", JSON.stringify(updatedMatches));
+      setSavedMatches(updatedMatches);
+
+      Alert.alert("Match Saved", "Your match has been saved on this phone.");
+    } catch (error) {
+      Alert.alert("Save Failed", "The match could not be saved.");
+    }
+  };
+
+  const shareMatchSummary = async () => {
+    const message = `
+🏐 Gaelic Match Summary
+
+${teamName} ${formatGaelicScore(teamGoals, teamPoints)}
+${oppositionName} ${formatGaelicScore(oppositionGoals, oppositionPoints)}
+
+${formatShareTime()}
+
+📊 Shot Summary
+Scores: ${teamScores}
+Total Attempts: ${totalShots}
+Shot Conversion: ${conversionRate}%
+
+Wides: ${teamWides}
+Shorts: ${teamShorts}
+Blocked: ${teamBlocked}
+Saved: ${teamSaved}
+
+📍 ${restartLabel}
+Own ${shortRestartLabel} Won: ${ownKickoutsWon}/${ownKickoutsTotal} - ${ownKickoutWinRate}%
+Opp ${shortRestartLabel} Won: ${oppositionKickoutsWon}/${oppositionKickoutsTotal} - ${oppositionKickoutWinRate}%
+
+🔁 Turnovers
+Turn Ov Won: ${totalTurnoversWon}
+Forced: ${turnoverWonForced} | Unforced: ${turnoverWonUnforced}
+
+Turn Ov Lost: ${totalTurnoversLost}
+Forced: ${turnoverLostForced} | Unforced: ${turnoverLostUnforced}
+`;
+
+    await Share.share({ message });
+  };
+
+  const shareScoreOnly = async () => {
+    const message = `
+🏐 Score Update
+
+${teamName} ${formatGaelicScore(teamGoals, teamPoints)}
+${oppositionName} ${formatGaelicScore(oppositionGoals, oppositionPoints)}
+
+${formatShareTime()}
+`;
+
+    await Share.share({ message });
+  };
+
+  const undoLastAction = () => {
+    if (lastActions.length === 0) return;
+
+    const lastAction = lastActions[lastActions.length - 1];
+
+    if (lastAction === "teamPoint") {
+      setTeamScore((value) => Math.max(0, value - 1));
+      setTeamPoints((value) => Math.max(0, value - 1));
+      setTeamScores((value) => Math.max(0, value - 1));
+    }
+
+    if (lastAction === "teamTwoPointer") {
+      setTeamScore((value) => Math.max(0, value - 2));
+      setTeamPoints((value) => Math.max(0, value - 2));
+      setTeamScores((value) => Math.max(0, value - 1));
+    }
+
+    if (lastAction === "teamGoal") {
+      setTeamScore((value) => Math.max(0, value - 3));
+      setTeamGoals((value) => Math.max(0, value - 1));
+      setTeamScores((value) => Math.max(0, value - 1));
+    }
+
+    if (lastAction === "teamWide") setTeamWides((value) => Math.max(0, value - 1));
+    if (lastAction === "teamShort") setTeamShorts((value) => Math.max(0, value - 1));
+    if (lastAction === "teamBlocked") setTeamBlocked((value) => Math.max(0, value - 1));
+    if (lastAction === "teamSaved") setTeamSaved((value) => Math.max(0, value - 1));
+
+    if (lastAction === "ownKickoutWon") setOwnKickoutsWon((value) => Math.max(0, value - 1));
+    if (lastAction === "ownKickoutLost") setOwnKickoutsLost((value) => Math.max(0, value - 1));
+    if (lastAction === "oppositionKickoutWon") setOppositionKickoutsWon((value) => Math.max(0, value - 1));
+    if (lastAction === "oppositionKickoutLost") setOppositionKickoutsLost((value) => Math.max(0, value - 1));
+
+    if (lastAction === "turnoverWonForced") setTurnoverWonForced((value) => Math.max(0, value - 1));
+    if (lastAction === "turnoverWonUnforced") setTurnoverWonUnforced((value) => Math.max(0, value - 1));
+    if (lastAction === "turnoverLostForced") setTurnoverLostForced((value) => Math.max(0, value - 1));
+    if (lastAction === "turnoverLostUnforced") setTurnoverLostUnforced((value) => Math.max(0, value - 1));
+
+    if (lastAction === "oppositionPoint") {
+      setOppositionScore((value) => Math.max(0, value - 1));
+      setOppositionPoints((value) => Math.max(0, value - 1));
+    }
+
+    if (lastAction === "oppositionTwoPointer") {
+      setOppositionScore((value) => Math.max(0, value - 2));
+      setOppositionPoints((value) => Math.max(0, value - 2));
+    }
+
+    if (lastAction === "oppositionGoal") {
+      setOppositionScore((value) => Math.max(0, value - 3));
+      setOppositionGoals((value) => Math.max(0, value - 1));
+    }
+
+    setLastActions(lastActions.slice(0, -1));
+  };
+
+  const resetEverything = async () => {
+    setTimerRunning(false);
+    setSeconds(30 * 60);
+    setAddedSeconds(0);
+    setCurrentHalf("1st Half");
+    setMatchStatus("Not Started");
+    setLiveMatchId("");
+
+    setTeamScore(0);
+    setTeamGoals(0);
+    setTeamPoints(0);
+    setTeamScores(0);
+    setTeamWides(0);
+    setTeamShorts(0);
+    setTeamBlocked(0);
+    setTeamSaved(0);
+
+    setOwnKickoutsWon(0);
+    setOwnKickoutsLost(0);
+    setOppositionKickoutsWon(0);
+    setOppositionKickoutsLost(0);
+
+    setTurnoverWonForced(0);
+    setTurnoverWonUnforced(0);
+    setTurnoverLostForced(0);
+    setTurnoverLostUnforced(0);
+
+    setOppositionScore(0);
+    setOppositionGoals(0);
+    setOppositionPoints(0);
+
+    setLastActions([]);
+
+    await AsyncStorage.removeItem("currentMatch");
+  };
+
+  const confirmResetMatch = () => {
+    Alert.alert("New Match", "Are you sure you want to start a new match?", [
+      { text: "Cancel", style: "cancel" },
+      { text: "New Match", style: "destructive", onPress: resetEverything },
+    ]);
+  };
+
+  return (
+    <ScrollView contentContainerStyle={styles.container}>
+      <Text style={styles.title}>Gaelic Stats Tracker</Text>
+
+      <View style={styles.compactTimerBox}>
+        <Text style={styles.currentHalfText}>{currentHalf}</Text>
+
+        <View style={styles.timerTimeRow}>
+          <TouchableOpacity
+            style={[
+              styles.sportIconButton,
+              sport === "football" && styles.sportIconButtonSelected,
+            ]}
+            onPress={() => setSport("football")}
+          >
+            <Text style={styles.sportIconText}>🏐</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.adjustTimerButton}
+            onPress={() => {
+              if (seconds > 0) {
+                setSeconds((value) => Math.max(0, value - 60));
+              } else {
+                setAddedSeconds((value) => Math.max(0, value - 60));
+              }
+            }}
+          >
+            <Text style={styles.adjustTimerText}>-1 min</Text>
+          </TouchableOpacity>
+
+          <Text style={[styles.compactTimerText, seconds === 0 && styles.addedTimeText]}>
+            {formatTimerDisplay()}
+          </Text>
+
+          <TouchableOpacity
+            style={styles.adjustTimerButton}
+            onPress={() => {
+              if (seconds > 0) {
+                setSeconds((value) => value + 60);
+              } else {
+                setAddedSeconds((value) => value + 60);
+              }
+            }}
+          >
+            <Text style={styles.adjustTimerText}>+1 min</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.sportIconButton,
+              sport === "hurling" && styles.sportIconButtonSelected,
+            ]}
+            onPress={() => setSport("hurling")}
+          >
+            <Text style={styles.sportIconText}>🏑</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.timerButtonRow}>
+          <TouchableOpacity style={styles.timerStartButton} onPress={startFirstHalf}>
+            <Text style={styles.timerButtonText}>Start 1st Half</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.pauseIconButton}
+            onPress={() => setTimerRunning(!timerRunning)}
+          >
+            <Text style={styles.pauseIcon}>{timerRunning ? "⏸" : "▶"}</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.timerStopButton}
+            onPress={
+              matchStatus === "2nd Half Started" || matchStatus === "Full Time"
+                ? confirmEndMatch
+                : startSecondHalf
+            }
+          >
+            <Text style={styles.timerButtonText}>
+              {matchStatus === "2nd Half Started" || matchStatus === "Full Time"
+                ? "End Match"
+                : "Start 2nd Half"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <View style={styles.scoreboard}>
+        <View style={styles.scoreCard}>
+          <TextInput
+            style={styles.teamNameInput}
+            value={teamName}
+            onChangeText={setTeamName}
+            placeholder="Team name"
+          />
+          <Text style={styles.gaelicScore}>
+            {formatGaelicScore(teamGoals, teamPoints)}
+          </Text>
+          <Text style={styles.totalScore}>Total: {teamScore}</Text>
+        </View>
+
+        <View style={styles.scoreCard}>
+          <TextInput
+            style={styles.teamNameInput}
+            value={oppositionName}
+            onChangeText={setOppositionName}
+            placeholder="Opposition"
+          />
+          <Text style={styles.gaelicScore}>
+            {formatGaelicScore(oppositionGoals, oppositionPoints)}
+          </Text>
+          <Text style={styles.totalScore}>Total: {oppositionScore}</Text>
+        </View>
+      </View>
+
+      <View style={styles.scoreBox}>
+        <Text style={styles.sectionTitle}>Scoring</Text>
+
+        <View style={styles.twoColumnButtons}>
+          <View style={styles.teamColumn}>
+            <Text style={styles.smallHeading}>{teamName}</Text>
+
+            <TouchableOpacity
+              style={[styles.button, { backgroundColor: leftScoringColour.colour }]}
+              onPress={() => {
+                setTeamScore(teamScore + 1);
+                setTeamPoints(teamPoints + 1);
+                setTeamScores(teamScores + 1);
+                addAction("teamPoint");
+              }}
+            >
+              <Text style={styles.buttonText}>+ Point</Text>
+            </TouchableOpacity>
+
+            {isFootball && (
+              <TouchableOpacity
+                style={[styles.button, { backgroundColor: leftScoringColour.colour }]}
+                onPress={() => {
+                  setTeamScore(teamScore + 2);
+                  setTeamPoints(teamPoints + 2);
+                  setTeamScores(teamScores + 1);
+                  addAction("teamTwoPointer");
+                }}
+              >
+                <Text style={styles.buttonText}>+ 2 Pointer</Text>
+              </TouchableOpacity>
+            )}
+
+            <TouchableOpacity
+              style={[styles.button, { backgroundColor: leftScoringColour.colour }]}
+              onPress={() => {
+                setTeamScore(teamScore + 3);
+                setTeamGoals(teamGoals + 1);
+                setTeamScores(teamScores + 1);
+                addAction("teamGoal");
+              }}
+            >
+              <Text style={styles.buttonText}>+ Goal</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.teamColumn}>
+            <Text style={styles.smallHeading}>{oppositionName}</Text>
+
+            <TouchableOpacity
+              style={[styles.buttonDark, { backgroundColor: rightScoringColour.colour }]}
+              onPress={() => {
+                setOppositionScore(oppositionScore + 1);
+                setOppositionPoints(oppositionPoints + 1);
+                addAction("oppositionPoint");
+              }}
+            >
+              <Text style={styles.buttonText}>+ Point</Text>
+            </TouchableOpacity>
+
+            {isFootball && (
+              <TouchableOpacity
+                style={[styles.buttonDark, { backgroundColor: rightScoringColour.colour }]}
+                onPress={() => {
+                  setOppositionScore(oppositionScore + 2);
+                  setOppositionPoints(oppositionPoints + 2);
+                  addAction("oppositionTwoPointer");
+                }}
+              >
+                <Text style={styles.buttonText}>+ 2 Pointer</Text>
+              </TouchableOpacity>
+            )}
+
+            <TouchableOpacity
+              style={[styles.buttonDark, { backgroundColor: rightScoringColour.colour }]}
+              onPress={() => {
+                setOppositionScore(oppositionScore + 3);
+                setOppositionGoals(oppositionGoals + 1);
+                addAction("oppositionGoal");
+              }}
+            >
+              <Text style={styles.buttonText}>+ Goal</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+
+      <TouchableOpacity
+        style={styles.hideStatsButton}
+        onPress={() => setShowFullStats(!showFullStats)}
+      >
+        <Text style={styles.shareButtonText}>
+          {showFullStats ? "⬆ Hide Stats ⬆" : "⬇ Show Stats ⬇"}
+        </Text>
+      </TouchableOpacity>
+
+      {showFullStats && (
+        <>
+          <View style={styles.scoreBox}>
+            <View style={styles.shotHeaderRow}>
+              <Text style={styles.shotHeaderSideText}>Scores: {teamScores}</Text>
+              <Text style={styles.sectionTitleNoMargin}>Shot Attempts</Text>
+              <Text style={styles.shotHeaderSideText}>Total Att: {totalShots}</Text>
+            </View>
+
+            <View style={styles.compactSummaryBox}>
+              <View style={styles.shotCompactRow}>
+                <Text style={styles.compactStatText}>Wides: {teamWides}</Text>
+                <Text style={styles.compactStatText}>Shorts: {teamShorts}</Text>
+                <Text style={styles.compactStatText}>Blocked: {teamBlocked}</Text>
+                <Text style={styles.compactStatText}>Saved: {teamSaved}</Text>
+              </View>
+
+              <Text style={styles.compactConversionText}>
+                Shot Conversion: {conversionRate}%
+              </Text>
+            </View>
+
+            <View style={styles.shotButtonGrid}>
+              <TouchableOpacity
+                style={styles.shotHalfButton}
+                onPress={() => {
+                  setTeamWides(teamWides + 1);
+                  addAction("teamWide");
+                }}
+              >
+                <Text style={styles.buttonText}>+ Wide</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.shotHalfButton}
+                onPress={() => {
+                  setTeamShorts(teamShorts + 1);
+                  addAction("teamShort");
+                }}
+              >
+                <Text style={styles.buttonText}>+ Short</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.shotHalfButton}
+                onPress={() => {
+                  setTeamBlocked(teamBlocked + 1);
+                  addAction("teamBlocked");
+                }}
+              >
+                <Text style={styles.buttonText}>+ Blocked</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.shotHalfButton}
+                onPress={() => {
+                  setTeamSaved(teamSaved + 1);
+                  addAction("teamSaved");
+                }}
+              >
+                <Text style={styles.buttonText}>+ Saved</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <View style={styles.scoreBox}>
+            <Text style={styles.sectionTitle}>{restartLabel}</Text>
+
+            <View style={styles.twoColumnButtons}>
+              <View style={styles.teamColumn}>
+                <View style={styles.kickoutSummaryBox}>
+                  <Text style={styles.kickoutTitle}>Own {restartLabel}</Text>
+                  <Text style={styles.kickoutSmall}>Won: {ownKickoutsWon}</Text>
+                  <Text style={styles.kickoutSmall}>Lost: {ownKickoutsLost}</Text>
+                  <Text style={styles.kickoutSmall}>{ownKickoutWinRate}% Won</Text>
+                </View>
+
+                <TouchableOpacity
+                  style={styles.kickoutWonButton}
+                  onPress={() => {
+                    setOwnKickoutsWon(ownKickoutsWon + 1);
+                    addAction("ownKickoutWon");
+                  }}
+                >
+                  <Text style={styles.buttonText}>+ Own Won</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.kickoutLostButton}
+                  onPress={() => {
+                    setOwnKickoutsLost(ownKickoutsLost + 1);
+                    addAction("ownKickoutLost");
+                  }}
+                >
+                  <Text style={styles.buttonText}>+ Own Lost</Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.teamColumn}>
+                <View style={styles.kickoutSummaryBox}>
+                  <Text style={styles.kickoutTitle}>Opp {restartLabel}</Text>
+                  <Text style={styles.kickoutSmall}>Won: {oppositionKickoutsWon}</Text>
+                  <Text style={styles.kickoutSmall}>Lost: {oppositionKickoutsLost}</Text>
+                  <Text style={styles.kickoutSmall}>
+                    {oppositionKickoutWinRate}% Won
+                  </Text>
+                </View>
+
+                <TouchableOpacity
+                  style={styles.kickoutWonButton}
+                  onPress={() => {
+                    setOppositionKickoutsWon(oppositionKickoutsWon + 1);
+                    addAction("oppositionKickoutWon");
+                  }}
+                >
+                  <Text style={styles.buttonText}>+ Opp Won</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.kickoutLostButton}
+                  onPress={() => {
+                    setOppositionKickoutsLost(oppositionKickoutsLost + 1);
+                    addAction("oppositionKickoutLost");
+                  }}
+                >
+                  <Text style={styles.buttonText}>+ Opp Lost</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.scoreBox}>
+            <Text style={styles.sectionTitle}>Turnovers</Text>
+
+            <View style={styles.twoColumnButtons}>
+              <View style={styles.teamColumn}>
+                <View style={styles.turnoverSummaryBox}>
+                  <Text style={styles.turnoverTitle}>Turn Ov Won</Text>
+                  <Text style={styles.turnoverTotal}>{totalTurnoversWon}</Text>
+                  <Text style={styles.turnoverSmall}>Forced: {turnoverWonForced}</Text>
+                  <Text style={styles.turnoverSmall}>
+                    Unforced: {turnoverWonUnforced}
+                  </Text>
+                </View>
+
+                <TouchableOpacity
+                  style={styles.turnoverWonButton}
+                  onPress={() => {
+                    setTurnoverWonForced(turnoverWonForced + 1);
+                    addAction("turnoverWonForced");
+                  }}
+                >
+                  <Text style={styles.buttonText}>+ Forced</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.turnoverWonButton}
+                  onPress={() => {
+                    setTurnoverWonUnforced(turnoverWonUnforced + 1);
+                    addAction("turnoverWonUnforced");
+                  }}
+                >
+                  <Text style={styles.buttonText}>+ Unforced</Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.teamColumn}>
+                <View style={styles.turnoverSummaryBox}>
+                  <Text style={styles.turnoverTitle}>Turn Ov Lost</Text>
+                  <Text style={styles.turnoverTotal}>{totalTurnoversLost}</Text>
+                  <Text style={styles.turnoverSmall}>Forced: {turnoverLostForced}</Text>
+                  <Text style={styles.turnoverSmall}>
+                    Unforced: {turnoverLostUnforced}
+                  </Text>
+                </View>
+
+                <TouchableOpacity
+                  style={styles.turnoverLostButton}
+                  onPress={() => {
+                    setTurnoverLostForced(turnoverLostForced + 1);
+                    addAction("turnoverLostForced");
+                  }}
+                >
+                  <Text style={styles.buttonText}>+ Forced</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.turnoverLostButton}
+                  onPress={() => {
+                    setTurnoverLostUnforced(turnoverLostUnforced + 1);
+                    addAction("turnoverLostUnforced");
+                  }}
+                >
+                  <Text style={styles.buttonText}>+ Unforced</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </>
+      )}
+
+      <TouchableOpacity style={styles.undoButton} onPress={undoLastAction}>
+        <Text style={styles.resetText}>Undo Last Action</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={styles.liveMatchButton} onPress={createLiveMatch}>
+        <Text style={styles.shareButtonText}>
+          {liveMatchId ? "Live Match Created" : "Create Live Match"}
+        </Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={styles.shareLiveLinkButton} onPress={shareLiveLink}>
+        <Text style={styles.shareButtonText}>💬 Share Live Link</Text>
+      </TouchableOpacity>
+
+      <View style={styles.shareButtonRow}>
+        <TouchableOpacity style={styles.shareHalfButton} onPress={shareMatchSummary}>
+          <Text style={styles.shareButtonText}>Share Match Summary</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.shareHalfButton} onPress={shareScoreOnly}>
+          <Text style={styles.shareButtonText}>Share Score</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.newSaveButtonRow}>
+        <TouchableOpacity style={styles.newMatchHalfButton} onPress={confirmResetMatch}>
+          <Text style={styles.resetText}>New Match</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.saveMatchHalfButton} onPress={saveMatch}>
+          <Text style={styles.resetText}>Save Match</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.themeButtonRow}>
+        <TouchableOpacity
+          style={styles.themeHalfButton}
+          onPress={() => {
+            setLeftScoringColourIndex((currentIndex) =>
+              currentIndex === scoringColours.length - 1 ? 0 : currentIndex + 1
+            );
+          }}
+        >
+          <Text style={styles.themeButtonText}>
+            Left Colour: {leftScoringColour.name}
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.themeHalfButton}
+          onPress={() => {
+            setRightScoringColourIndex((currentIndex) =>
+              currentIndex === scoringColours.length - 1 ? 0 : currentIndex + 1
+            );
+          }}
+        >
+          <Text style={styles.themeButtonText}>
+            Right Colour: {rightScoringColour.name}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {showFullStats && (
+        <>
+          <TouchableOpacity
+            style={styles.viewSavedButton}
+            onPress={() => {
+              loadSavedMatches();
+              setShowSavedMatches(!showSavedMatches);
+            }}
+          >
+            <Text style={styles.resetText}>
+              {showSavedMatches ? "Hide Saved Matches" : "View Saved Matches"}
+            </Text>
+          </TouchableOpacity>
+
+          {showSavedMatches && (
+            <View style={styles.savedMatchesBox}>
+              <Text style={styles.sectionTitle}>Saved Matches</Text>
+
+              {savedMatches.length === 0 ? (
+                <Text style={styles.noSavedText}>No saved matches yet.</Text>
+              ) : (
+                savedMatches.map((match) => {
+                  const savedSport = match.sport || "football";
+                  const savedShortLabel = savedSport === "football" ? "KO" : "PO";
+
+                  const turnOvWon =
+                    (match.turnoverWonForced || 0) +
+                    (match.turnoverWonUnforced || 0);
+
+                  const turnOvLost =
+                    (match.turnoverLostForced || 0) +
+                    (match.turnoverLostUnforced || 0);
+
+                  return (
+                    <View key={match.id} style={styles.savedMatchCard}>
+                      <Text style={styles.savedMatchTitle}>
+                        {match.teamName}{" "}
+                        {formatGaelicScore(match.teamGoals, match.teamPoints)} v{" "}
+                        {match.oppositionName}{" "}
+                        {formatGaelicScore(
+                          match.oppositionGoals,
+                          match.oppositionPoints
+                        )}
+                      </Text>
+
+                      <Text style={styles.savedMatchText}>
+                        Shot Conversion: {match.conversionRate}%
+                      </Text>
+
+                      <Text style={styles.savedMatchText}>
+                        Own {savedShortLabel}: {match.ownKickoutWinRate}% | Opp{" "}
+                        {savedShortLabel}: {match.oppositionKickoutWinRate}%
+                      </Text>
+
+                      <Text style={styles.savedMatchText}>
+                        Turn Ov Won: {turnOvWon}
+                      </Text>
+                      <Text style={styles.savedMatchText}>
+                        Forced: {match.turnoverWonForced || 0} | Unforced:{" "}
+                        {match.turnoverWonUnforced || 0}
+                      </Text>
+
+                      <Text style={styles.savedMatchText}>
+                        Turn Ov Lost: {turnOvLost}
+                      </Text>
+                      <Text style={styles.savedMatchText}>
+                        Forced: {match.turnoverLostForced || 0} | Unforced:{" "}
+                        {match.turnoverLostUnforced || 0}
+                      </Text>
+
+                      <Text style={styles.savedMatchDate}>
+                        Saved: {formatSavedDate(match.savedAt)}
+                      </Text>
+
+                      <View style={styles.savedMatchButtonRow}>
+                        <TouchableOpacity
+                          style={styles.deleteSavedHalfButton}
+                          onPress={() => deleteSavedMatch(match.id)}
+                        >
+                          <Text style={styles.savedMatchButtonText}>
+                            Delete Saved Match
+                          </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={styles.shareSavedHalfButton}
+                          onPress={() => shareSavedMatch(match)}
+                        >
+                          <Text style={styles.savedMatchButtonText}>
+                            Share Saved Match
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  );
+                })
+              )}
+            </View>
+          )}
+        </>
+      )}
+    </ScrollView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    padding: 12,
+    backgroundColor: "#dcebd7",
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginBottom: 8,
+    marginTop: 12,
+  },
+  compactTimerBox: {
+    backgroundColor: "white",
+    borderRadius: 12,
+    padding: 8,
+    marginBottom: 8,
+    elevation: 3,
+  },
+  currentHalfText: {
+    fontSize: 12,
+    fontWeight: "bold",
+    color: "#555",
+    textAlign: "center",
+    marginBottom: 2,
+  },
+  timerTimeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    marginBottom: 6,
+  },
+  sportIconButton: {
+    backgroundColor: "#eeeeee",
+    borderRadius: 20,
+    paddingVertical: 5,
+    paddingHorizontal: 8,
+    borderWidth: 2,
+    borderColor: "#dddddd",
+  },
+  sportIconButtonSelected: {
+    backgroundColor: "#e8f3e5",
+    borderColor: "#146c2e",
+  },
+  sportIconText: {
+    fontSize: 18,
+    textAlign: "center",
+  },
+  timerButtonRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  timerStartButton: {
+    flex: 1,
+    backgroundColor: "#146c2e",
+    paddingVertical: 9,
+    borderRadius: 8,
+  },
+  timerStopButton: {
+    flex: 1,
+    backgroundColor: "#8b1a1a",
+    paddingVertical: 9,
+    borderRadius: 8,
+  },
+  compactTimerText: {
+    fontSize: 26,
+    fontWeight: "bold",
+    textAlign: "center",
+    minWidth: 80,
+  },
+  addedTimeText: {
+    color: "red",
+  },
+  pauseIconButton: {
+    backgroundColor: "#dddddd",
+    paddingVertical: 3,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+  },
+  pauseIcon: {
+    fontSize: 24,
+    fontWeight: "bold",
+    textAlign: "center",
+  },
+  adjustTimerButton: {
+    backgroundColor: "#dddddd",
+    paddingVertical: 5,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
+  adjustTimerText: {
+    fontSize: 12,
+    fontWeight: "bold",
+    color: "#222",
+  },
+  timerButtonText: {
+    color: "white",
+    fontSize: 12,
+    fontWeight: "bold",
+    textAlign: "center",
+  },
+  scoreboard: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 8,
+  },
+  scoreCard: {
+    flex: 1,
+    backgroundColor: "white",
+    borderRadius: 12,
+    padding: 10,
+    elevation: 3,
+  },
+  teamNameInput: {
+    fontSize: 15,
+    fontWeight: "bold",
+    textAlign: "center",
+    backgroundColor: "#eeeeee",
+    borderRadius: 8,
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+  },
+  scoreBox: {
+    backgroundColor: "white",
+    borderRadius: 14,
+    padding: 10,
+    marginBottom: 10,
+    elevation: 3,
+  },
+  smallHeading: {
+    fontSize: 14,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginBottom: 6,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginBottom: 8,
+  },
+  shotHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 6,
+  },
+  shotHeaderSideText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: "bold",
+    textAlign: "center",
+  },
+  sectionTitleNoMargin: {
+    flex: 1.2,
+    fontSize: 18,
+    fontWeight: "bold",
+    textAlign: "center",
+  },
+  gaelicScore: {
+    fontSize: 34,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginTop: 4,
+  },
+  totalScore: {
+    fontSize: 12,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginTop: 2,
+    color: "#555",
+  },
+  compactSummaryBox: {
+    backgroundColor: "#eeeeee",
+    borderRadius: 10,
+    paddingVertical: 5,
+    paddingHorizontal: 4,
+    marginBottom: 8,
+  },
+  shotCompactRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 2,
+  },
+  compactStatText: {
+    flex: 1,
+    fontSize: 11,
+    fontWeight: "bold",
+    textAlign: "center",
+  },
+  compactConversionText: {
+    fontSize: 13,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginTop: 3,
+  },
+  kickoutSummaryBox: {
+    backgroundColor: "#eeeeee",
+    borderRadius: 10,
+    padding: 8,
+    marginBottom: 8,
+  },
+  kickoutTitle: {
+    fontSize: 14,
+    fontWeight: "bold",
+    textAlign: "center",
+  },
+  kickoutSmall: {
+    fontSize: 11,
+    fontWeight: "bold",
+    textAlign: "center",
+    color: "#555",
+    marginTop: 2,
+  },
+  turnoverSummaryBox: {
+    backgroundColor: "#eeeeee",
+    borderRadius: 10,
+    padding: 8,
+    marginBottom: 8,
+  },
+  turnoverTitle: {
+    fontSize: 14,
+    fontWeight: "bold",
+    textAlign: "center",
+  },
+  turnoverTotal: {
+    fontSize: 26,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginTop: 2,
+  },
+  turnoverSmall: {
+    fontSize: 11,
+    fontWeight: "bold",
+    textAlign: "center",
+    color: "#555",
+    marginTop: 2,
+  },
+  twoColumnButtons: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 8,
+  },
+  teamColumn: {
+    flex: 1,
+    gap: 6,
+  },
+  button: {
+    backgroundColor: "#7a0019",
+    padding: 10,
+    borderRadius: 8,
+  },
+  shotButtonGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 8,
+  },
+  shotHalfButton: {
+    width: "48%",
+    backgroundColor: "#b85c00",
+    padding: 10,
+    borderRadius: 8,
+  },
+  kickoutWonButton: {
+    backgroundColor: "#146c2e",
+    padding: 10,
+    borderRadius: 8,
+  },
+  kickoutLostButton: {
+    backgroundColor: "#8b1a1a",
+    padding: 10,
+    borderRadius: 8,
+  },
+  turnoverWonButton: {
+    backgroundColor: "#146c2e",
+    padding: 10,
+    borderRadius: 8,
+  },
+  turnoverLostButton: {
+    backgroundColor: "#8b1a1a",
+    padding: 10,
+    borderRadius: 8,
+  },
+  buttonDark: {
+    backgroundColor: "#222",
+    padding: 10,
+    borderRadius: 8,
+  },
+  buttonText: {
+    color: "white",
+    fontSize: 13,
+    fontWeight: "bold",
+    textAlign: "center",
+  },
+  hideStatsButton: {
+    backgroundColor: "#444444",
+    padding: 11,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  liveMatchButton: {
+    backgroundColor: "#0057b8",
+    padding: 11,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  shareLiveLinkButton: {
+    backgroundColor: "#146c2e",
+    padding: 11,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  newSaveButtonRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 8,
+  },
+  newMatchHalfButton: {
+    flex: 1,
+    backgroundColor: "#999",
+    padding: 11,
+    borderRadius: 8,
+  },
+  saveMatchHalfButton: {
+    flex: 1,
+    backgroundColor: "#0057b8",
+    padding: 11,
+    borderRadius: 8,
+  },
+  themeButtonRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 8,
+  },
+  themeHalfButton: {
+    flex: 1,
+    backgroundColor: "#444444",
+    padding: 11,
+    borderRadius: 8,
+  },
+  themeButtonText: {
+    color: "white",
+    fontSize: 12,
+    fontWeight: "bold",
+    textAlign: "center",
+  },
+  viewSavedButton: {
+    backgroundColor: "#333333",
+    padding: 11,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  savedMatchesBox: {
+    backgroundColor: "white",
+    borderRadius: 14,
+    padding: 10,
+    marginBottom: 20,
+    elevation: 3,
+  },
+  savedMatchCard: {
+    backgroundColor: "#eeeeee",
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 8,
+  },
+  savedMatchTitle: {
+    fontSize: 15,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginBottom: 4,
+  },
+  savedMatchText: {
+    fontSize: 13,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginBottom: 2,
+  },
+  savedMatchDate: {
+    fontSize: 11,
+    textAlign: "center",
+    color: "#555",
+    marginTop: 4,
+  },
+  savedMatchButtonRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 8,
+  },
+  deleteSavedHalfButton: {
+    flex: 1,
+    backgroundColor: "#8b1a1a",
+    padding: 8,
+    borderRadius: 8,
+  },
+  shareSavedHalfButton: {
+    flex: 1,
+    backgroundColor: "#146c2e",
+    padding: 8,
+    borderRadius: 8,
+  },
+  savedMatchButtonText: {
+    color: "white",
+    fontSize: 12,
+    fontWeight: "bold",
+    textAlign: "center",
+  },
+  noSavedText: {
+    fontSize: 14,
+    fontWeight: "bold",
+    textAlign: "center",
+    color: "#555",
+  },
+  shareButtonRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 8,
+  },
+  shareHalfButton: {
+    flex: 1,
+    backgroundColor: "#146c2e",
+    padding: 11,
+    borderRadius: 8,
+  },
+  shareButtonText: {
+    color: "white",
+    fontSize: 14,
+    fontWeight: "bold",
+    textAlign: "center",
+  },
+  undoButton: {
+    backgroundColor: "#444",
+    padding: 11,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  resetText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "bold",
+    textAlign: "center",
+  },
+});

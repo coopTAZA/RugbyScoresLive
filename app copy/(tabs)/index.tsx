@@ -1,0 +1,1371 @@
+
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { doc, setDoc, updateDoc } from "firebase/firestore";
+import { useEffect, useState } from "react";
+import {
+  Alert,
+  Animated,
+  ScrollView,
+  Share,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { db } from "../../firebaseConfig";
+
+type Sport = "football" | "hurling";
+
+type Action =
+  | "teamPoint"
+  | "teamTwoPointer"
+  | "teamGoal"
+  | "oppositionPoint"
+  | "oppositionTwoPointer"
+  | "oppositionGoal";
+
+export default function HomeScreen() {
+  const [sport, setSport] = useState<Sport>("football");
+
+  const [seconds, setSeconds] = useState(30 * 60);
+  const [addedSeconds, setAddedSeconds] = useState(0);
+  const [timerRunning, setTimerRunning] = useState(false);
+  const [currentHalf, setCurrentHalf] = useState("1st Half");
+
+  const [liveMatchId, setLiveMatchId] = useState("");
+  const [matchStatus, setMatchStatus] = useState("Not Started");
+  const [liveSignalOpacity] = useState(new Animated.Value(1));
+
+  const scoringColours: {
+    name: string;
+    colour: string;
+    textColour?: string;
+    borderColour?: string;
+  }[] = [
+    { name: "Maroon", colour: "#7a0019" },
+    { name: "Red", colour: "#b00020" },
+    { name: "Black", colour: "#222222" },
+    {
+      name: "White",
+      colour: "#f2f2f2",
+      textColour: "#333333",
+      borderColour: "#999999",
+    },
+    { name: "Dark Grey", colour: "#bfbfbf", textColour: "#000000" },
+    { name: "Blue", colour: "#0057b8" },
+    { name: "Sky Blue", colour: "#4aa3df" },
+    { name: "Green", colour: "#146c2e" },
+    { name: "Lime Green", colour: "#4caf50" },
+    { name: "Yellow", colour: "#d4a900" },
+    { name: "Orange", colour: "#b85c00" },
+    { name: "Purple", colour: "#5b2c83" },
+  ];
+
+  const [leftScoringColourIndex, setLeftScoringColourIndex] = useState(6);
+  const [rightScoringColourIndex, setRightScoringColourIndex] = useState(4);
+
+  const leftScoringColour =
+    scoringColours[leftScoringColourIndex] || scoringColours[0];
+
+  const rightScoringColour =
+    scoringColours[rightScoringColourIndex] || scoringColours[1];
+
+  const leftButtonTextColour = leftScoringColour.textColour || "white";
+  const rightButtonTextColour = rightScoringColour.textColour || "white";
+
+  const leftScoringButtonStyle = [
+    styles.button,
+    {
+      backgroundColor: leftScoringColour.colour,
+      borderWidth: 1,
+      borderColor: leftScoringColour.borderColour || "#444444",
+    },
+  ];
+
+  const rightScoringButtonStyle = [
+    styles.buttonDark,
+    {
+      backgroundColor: rightScoringColour.colour,
+      borderWidth: 1,
+      borderColor: rightScoringColour.borderColour || "#444444",
+    },
+  ];
+
+  const [teamName, setTeamName] = useState("Team 1");
+  const [oppositionName, setOppositionName] = useState("Team 2");
+
+  const [teamScore, setTeamScore] = useState(0);
+  const [teamGoals, setTeamGoals] = useState(0);
+  const [teamPoints, setTeamPoints] = useState(0);
+
+  const [oppositionScore, setOppositionScore] = useState(0);
+  const [oppositionGoals, setOppositionGoals] = useState(0);
+  const [oppositionPoints, setOppositionPoints] = useState(0);
+
+  const [lastActions, setLastActions] = useState<Action[]>([]);
+  const [currentMatchLoaded, setCurrentMatchLoaded] = useState(false);
+
+  const isFootball = sport === "football";
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setInterval>;
+
+    if (timerRunning) {
+      timer = setInterval(() => {
+        setSeconds((value) => {
+          if (value > 0) return value - 1;
+
+          setAddedSeconds((addedValue) => addedValue + 1);
+          return 0;
+        });
+      }, 1000);
+    }
+
+    return () => clearInterval(timer);
+  }, [timerRunning]);
+
+  useEffect(() => {
+    loadCurrentMatch();
+  }, []);
+
+  useEffect(() => {
+    if (!currentMatchLoaded) return;
+
+    const autoSaveCurrentMatch = async () => {
+      const currentMatch = {
+        sport,
+        seconds,
+        addedSeconds,
+        timerRunning: false,
+        currentHalf,
+        matchStatus,
+        leftScoringColourIndex,
+        rightScoringColourIndex,
+        teamName,
+        oppositionName,
+        teamScore,
+        teamGoals,
+        teamPoints,
+        oppositionScore,
+        oppositionGoals,
+        oppositionPoints,
+        liveMatchId,
+      };
+
+      await AsyncStorage.setItem("currentMatch", JSON.stringify(currentMatch));
+    };
+
+    autoSaveCurrentMatch();
+  }, [
+    currentMatchLoaded,
+    sport,
+    seconds,
+    addedSeconds,
+    currentHalf,
+    matchStatus,
+    leftScoringColourIndex,
+    rightScoringColourIndex,
+    teamName,
+    oppositionName,
+    teamScore,
+    teamGoals,
+    teamPoints,
+    oppositionScore,
+    oppositionGoals,
+    oppositionPoints,
+    liveMatchId,
+  ]);
+
+  useEffect(() => {
+    if (!liveMatchId) return;
+
+    const updateLiveMatch = async () => {
+      try {
+        await updateDoc(doc(db, "matches", liveMatchId), {
+          sport,
+          teamName,
+          oppositionName,
+          teamGoals,
+          teamPoints,
+          teamScore,
+          oppositionGoals,
+          oppositionPoints,
+          oppositionScore,
+          currentHalf,
+          matchStatus,
+          seconds,
+          addedSeconds,
+          updatedAt: new Date().toISOString(),
+        });
+      } catch (error) {
+        console.log("Live match update failed", error);
+      }
+    };
+
+    updateLiveMatch();
+  }, [
+    liveMatchId,
+    sport,
+    teamName,
+    oppositionName,
+    teamGoals,
+    teamPoints,
+    teamScore,
+    oppositionGoals,
+    oppositionPoints,
+    oppositionScore,
+    currentHalf,
+    matchStatus,
+    seconds,
+    addedSeconds,
+  ]);
+
+  const addAction = (action: Action) => {
+    setLastActions((currentActions) => [...currentActions, action]);
+  };
+
+  const formatTime = (totalSeconds: number) => {
+    const minutes = Math.floor(totalSeconds / 60);
+    const secs = totalSeconds % 60;
+
+    return `${minutes.toString().padStart(2, "0")}:${secs
+      .toString()
+      .padStart(2, "0")}`;
+  };
+
+  const formatTimerDisplay = () => {
+    return seconds > 0 ? formatTime(seconds) : formatTime(addedSeconds);
+  };
+
+  const formatShareTime = () => {
+    if (matchStatus === "Half Time") {
+      return "Half Time";
+    }
+
+    if (matchStatus === "Half Time Extra Time") {
+      return "Half Time Extra Time";
+    }
+
+    if (matchStatus === "Full Time") {
+      return "Full Time";
+    }
+
+    if (seconds > 0) {
+      return `${currentHalf} - Time Remaining: ${formatTime(seconds)}`;
+    }
+
+    return `${currentHalf} - Added Time: ${formatTime(addedSeconds)}`;
+  };
+
+  const formatGaelicScore = (goals: number, points: number) => {
+    return `${goals}:${points.toString().padStart(2, "0")}`;
+  };
+
+const flashLiveSignal = () => {
+  liveSignalOpacity.setValue(1);
+
+  Animated.sequence([
+    Animated.timing(liveSignalOpacity, {
+      toValue: 0,
+      duration: 250,
+      useNativeDriver: true,
+    }),
+    Animated.timing(liveSignalOpacity, {
+      toValue: 1,
+      duration: 250,
+      useNativeDriver: true,
+    }),
+
+    Animated.timing(liveSignalOpacity, {
+      toValue: 0,
+      duration: 250,
+      useNativeDriver: true,
+    }),
+    Animated.timing(liveSignalOpacity, {
+      toValue: 1,
+      duration: 250,
+      useNativeDriver: true,
+    }),
+
+    Animated.timing(liveSignalOpacity, {
+      toValue: 0,
+      duration: 250,
+      useNativeDriver: true,
+    }),
+    Animated.timing(liveSignalOpacity, {
+      toValue: 1,
+      duration: 250,
+      useNativeDriver: true,
+    }),
+
+    Animated.timing(liveSignalOpacity, {
+      toValue: 0,
+      duration: 250,
+      useNativeDriver: true,
+    }),
+    Animated.timing(liveSignalOpacity, {
+      toValue: 1,
+      duration: 250,
+      useNativeDriver: true,
+    }),
+
+    Animated.timing(liveSignalOpacity, {
+      toValue: 0,
+      duration: 250,
+      useNativeDriver: true,
+    }),
+    Animated.timing(liveSignalOpacity, {
+      toValue: 1,
+      duration: 250,
+      useNativeDriver: true,
+    }),
+  ]).start();
+};
+
+  const createLiveMatch = async () => {
+    try {
+      const newLiveMatchId = Date.now().toString();
+
+      await setDoc(doc(db, "matches", newLiveMatchId), {
+        sport,
+        teamName,
+        oppositionName,
+        teamGoals,
+        teamPoints,
+        teamScore,
+        oppositionGoals,
+        oppositionPoints,
+        oppositionScore,
+        currentHalf,
+        matchStatus: "Not Started",
+        seconds,
+        addedSeconds,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+
+      setLiveMatchId(newLiveMatchId);
+      setMatchStatus("Not Started");
+      flashLiveSignal();
+
+      Alert.alert("Live Match Created", "This match is now ready for live updates.");
+    } catch (error) {
+      Alert.alert("Live Match Failed", "The live match could not be created.");
+    }
+  };
+
+  const shareLiveLink = async () => {
+    if (!liveMatchId) {
+      Alert.alert("No Live Match", "Create a live match first.");
+      return;
+    }
+
+    const liveLink = `https://gaelic-scores-live.web.app/?match=${liveMatchId}`;
+
+    const message = `
+🏐 Live Score Link
+
+${teamName} v ${oppositionName}
+
+${liveLink}
+`;
+
+    await Share.share({ message });
+  };
+
+  const shareScoreOnly = async () => {
+    const message = `
+🏐 Score Update
+
+${matchStatus === "Full Time" ? "🏁 Match Ended" : formatShareTime()}
+
+${teamName} ${formatGaelicScore(teamGoals, teamPoints)}
+${oppositionName} ${formatGaelicScore(oppositionGoals, oppositionPoints)}
+`;
+
+    await Share.share({ message });
+  };
+
+  const startFirstHalf = () => {
+    if (seconds !== 30 * 60 || addedSeconds !== 0 || timerRunning) {
+      Alert.alert("Restart 1st Half?", "This will reset the timer to 30:00.", [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Restart",
+          style: "destructive",
+          onPress: () => {
+            setCurrentHalf("1st Half");
+            setMatchStatus("Match Started");
+            setSeconds(30 * 60);
+            setAddedSeconds(0);
+            setTimerRunning(true);
+          },
+        },
+      ]);
+
+      return;
+    }
+
+    setCurrentHalf("1st Half");
+    setMatchStatus("Match Started");
+    setSeconds(30 * 60);
+    setAddedSeconds(0);
+    setTimerRunning(true);
+  };
+
+const confirmEndFirstHalf = () => {
+  Alert.alert("End 1st Half?", "This will mark the live score as Half Time.", [
+    { text: "Cancel", style: "cancel" },
+    {
+      text: "End 1st Half",
+      style: "destructive",
+      onPress: () => {
+        setTimerRunning(false);
+        setSeconds(0);
+        setAddedSeconds(0);
+        setCurrentHalf("Half Time");
+        setMatchStatus("Half Time");
+      },
+    },
+  ]);
+};
+
+const confirmEndFirstHalfExtraTime = () => {
+  Alert.alert(
+    "End 1st Half Extra Time?",
+    "This will stop the timer and show Start 2nd Half ET.",
+    [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "End 1st Half ET",
+        style: "destructive",
+        onPress: () => {
+          setTimerRunning(false);
+          setSeconds(0);
+          setAddedSeconds(0);
+          setCurrentHalf("Half Time Extra Time");
+          setMatchStatus("Half Time Extra Time");
+        },
+      },
+    ]
+  );
+};
+
+  const confirmEndMatch = () => {
+    Alert.alert("End Match?", "Choose what you want to do next.", [
+      {
+        text: "End Match",
+        style: "destructive",
+        onPress: () => {
+          setTimerRunning(false);
+          setSeconds(0);
+          setAddedSeconds(0);
+          setCurrentHalf("Full Time");
+          setMatchStatus("Full Time");
+        },
+      },
+      {
+        text: "Start 1st Half Extra Time",
+        onPress: () => {
+          setCurrentHalf("1st Half Extra Time");
+          setMatchStatus("1st Half Extra Time");
+          setSeconds(10 * 60);
+          setAddedSeconds(0);
+          setTimerRunning(true);
+        },
+      },
+      {
+        text: "Cancel",
+        style: "cancel",
+      },
+    ]);
+  };
+
+  const startSecondHalf = () => {
+    if (currentHalf !== "2nd Half") {
+      Alert.alert("Start 2nd Half?", "This will start the timer at 30:00.", [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Start",
+          onPress: () => {
+            setCurrentHalf("2nd Half");
+            setMatchStatus("2nd Half Started");
+            setSeconds(30 * 60);
+            setAddedSeconds(0);
+            setTimerRunning(true);
+          },
+        },
+      ]);
+
+      return;
+    }
+
+    if (seconds !== 30 * 60 || addedSeconds !== 0 || timerRunning) {
+      Alert.alert("Restart 2nd Half?", "This will reset the timer to 30:00.", [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Restart",
+          style: "destructive",
+          onPress: () => {
+            setCurrentHalf("2nd Half");
+            setMatchStatus("2nd Half Started");
+            setSeconds(30 * 60);
+            setAddedSeconds(0);
+            setTimerRunning(true);
+          },
+        },
+      ]);
+
+      return;
+    }
+
+    setCurrentHalf("2nd Half");
+    setMatchStatus("2nd Half Started");
+    setSeconds(30 * 60);
+    setAddedSeconds(0);
+    setTimerRunning(true);
+  };
+
+  const startSecondHalfExtraTime = () => {
+    Alert.alert("Start 2nd Half Extra Time?", "This will start the timer at 10:00.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Start",
+        onPress: () => {
+          setCurrentHalf("2nd Half Extra Time");
+          setMatchStatus("2nd Half Extra Time Started");
+          setSeconds(10 * 60);
+          setAddedSeconds(0);
+          setTimerRunning(true);
+        },
+      },
+    ]);
+  };
+
+  const loadCurrentMatch = async () => {
+    try {
+      const existingCurrentMatch = await AsyncStorage.getItem("currentMatch");
+
+      if (existingCurrentMatch) {
+        const match = JSON.parse(existingCurrentMatch);
+
+        setSport(match.sport || "football");
+        setSeconds(match.seconds ?? 30 * 60);
+        setAddedSeconds(match.addedSeconds || 0);
+        setTimerRunning(false);
+        setCurrentHalf(match.currentHalf || "1st Half");
+        setMatchStatus(match.matchStatus || "Not Started");
+
+        const savedLeftColourIndex = match.leftScoringColourIndex ?? 0;
+        const savedRightColourIndex = match.rightScoringColourIndex ?? 1;
+
+        setLeftScoringColourIndex(
+          savedLeftColourIndex >= 0 && savedLeftColourIndex < scoringColours.length
+            ? savedLeftColourIndex
+            : 0
+        );
+
+        setRightScoringColourIndex(
+          savedRightColourIndex >= 0 && savedRightColourIndex < scoringColours.length
+            ? savedRightColourIndex
+            : 1
+        );
+
+        setTeamName(match.teamName || "An Tearmainn");
+        setOppositionName(match.oppositionName || "Opposition");
+
+        setTeamScore(match.teamScore || 0);
+        setTeamGoals(match.teamGoals || 0);
+        setTeamPoints(match.teamPoints || 0);
+
+        setOppositionScore(match.oppositionScore || 0);
+        setOppositionGoals(match.oppositionGoals || 0);
+        setOppositionPoints(match.oppositionPoints || 0);
+
+        setLiveMatchId(match.liveMatchId || "");
+      }
+
+      setCurrentMatchLoaded(true);
+    } catch (error) {
+      setCurrentMatchLoaded(true);
+      Alert.alert("Restore Failed", "The current match could not be restored.");
+    }
+  };
+
+  const confirmDeductTeamPoint = () => {
+    Alert.alert("Remove Point?", `Remove 1 point from ${teamName}?`, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Remove",
+        style: "destructive",
+        onPress: () => {
+          setTeamScore((value) => Math.max(0, value - 1));
+          setTeamPoints((value) => Math.max(0, value - 1));
+        },
+      },
+    ]);
+  };
+
+  const confirmDeductTeamTwoPointer = () => {
+    Alert.alert("Remove 2 Pointer?", `Remove 2 points from ${teamName}?`, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Remove",
+        style: "destructive",
+        onPress: () => {
+          setTeamScore((value) => Math.max(0, value - 2));
+          setTeamPoints((value) => Math.max(0, value - 2));
+        },
+      },
+    ]);
+  };
+
+  const confirmDeductTeamGoal = () => {
+    Alert.alert("Remove Goal?", `Remove 1 goal from ${teamName}?`, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Remove",
+        style: "destructive",
+        onPress: () => {
+          setTeamScore((value) => Math.max(0, value - 3));
+          setTeamGoals((value) => Math.max(0, value - 1));
+        },
+      },
+    ]);
+  };
+
+  const confirmDeductOppositionPoint = () => {
+    Alert.alert("Remove Point?", `Remove 1 point from ${oppositionName}?`, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Remove",
+        style: "destructive",
+        onPress: () => {
+          setOppositionScore((value) => Math.max(0, value - 1));
+          setOppositionPoints((value) => Math.max(0, value - 1));
+        },
+      },
+    ]);
+  };
+
+  const confirmDeductOppositionTwoPointer = () => {
+    Alert.alert("Remove 2 Pointer?", `Remove 2 points from ${oppositionName}?`, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Remove",
+        style: "destructive",
+        onPress: () => {
+          setOppositionScore((value) => Math.max(0, value - 2));
+          setOppositionPoints((value) => Math.max(0, value - 2));
+        },
+      },
+    ]);
+  };
+
+  const confirmDeductOppositionGoal = () => {
+    Alert.alert("Remove Goal?", `Remove 1 goal from ${oppositionName}?`, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Remove",
+        style: "destructive",
+        onPress: () => {
+          setOppositionScore((value) => Math.max(0, value - 3));
+          setOppositionGoals((value) => Math.max(0, value - 1));
+        },
+      },
+    ]);
+  };
+
+  const undoLastAction = () => {
+    if (lastActions.length === 0) return;
+
+    const lastAction = lastActions[lastActions.length - 1];
+
+    if (lastAction === "teamPoint") {
+      setTeamScore((value) => Math.max(0, value - 1));
+      setTeamPoints((value) => Math.max(0, value - 1));
+    }
+
+    if (lastAction === "teamTwoPointer") {
+      setTeamScore((value) => Math.max(0, value - 2));
+      setTeamPoints((value) => Math.max(0, value - 2));
+    }
+
+    if (lastAction === "teamGoal") {
+      setTeamScore((value) => Math.max(0, value - 3));
+      setTeamGoals((value) => Math.max(0, value - 1));
+    }
+
+    if (lastAction === "oppositionPoint") {
+      setOppositionScore((value) => Math.max(0, value - 1));
+      setOppositionPoints((value) => Math.max(0, value - 1));
+    }
+
+    if (lastAction === "oppositionTwoPointer") {
+      setOppositionScore((value) => Math.max(0, value - 2));
+      setOppositionPoints((value) => Math.max(0, value - 2));
+    }
+
+    if (lastAction === "oppositionGoal") {
+      setOppositionScore((value) => Math.max(0, value - 3));
+      setOppositionGoals((value) => Math.max(0, value - 1));
+    }
+
+    setLastActions(lastActions.slice(0, -1));
+  };
+
+  const resetEverything = async () => {
+    setTimerRunning(false);
+    setSeconds(30 * 60);
+    setAddedSeconds(0);
+    setCurrentHalf("1st Half");
+    setMatchStatus("Not Started");
+    setLiveMatchId("");
+
+    setTeamScore(0);
+    setTeamGoals(0);
+    setTeamPoints(0);
+
+    setOppositionScore(0);
+    setOppositionGoals(0);
+    setOppositionPoints(0);
+
+    setLastActions([]);
+
+    await AsyncStorage.removeItem("currentMatch");
+  };
+
+  const confirmResetMatch = () => {
+    Alert.alert("New Match", "Are you sure you want to start a new match?", [
+      { text: "Cancel", style: "cancel" },
+      { text: "New Match", style: "destructive", onPress: resetEverything },
+    ]);
+  };
+
+  return (
+    <ScrollView contentContainerStyle={styles.container}>
+      <Text style={styles.title}>Gaelic Scores Live</Text>
+
+      <View style={styles.compactTimerBox}>
+        <Text style={styles.currentHalfText}>{currentHalf}</Text>
+
+        <View style={styles.timerTimeRow}>
+          <TouchableOpacity
+            style={[
+              styles.sportIconButton,
+              sport === "football" && styles.sportIconButtonSelected,
+            ]}
+            onPress={() => setSport("football")}
+          >
+            <Text style={styles.sportIconText}>🏐</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.adjustTimerButton}
+            onPress={() => {
+              if (seconds > 0) {
+                setSeconds((value) => Math.max(0, value - 60));
+              } else {
+                setAddedSeconds((value) => Math.max(0, value - 60));
+              }
+            }}
+          >
+            <Text style={styles.adjustTimerText}>-1 min</Text>
+          </TouchableOpacity>
+
+          <Text style={[styles.compactTimerText, seconds === 0 && styles.addedTimeText]}>
+            {formatTimerDisplay()}
+          </Text>
+
+          <TouchableOpacity
+            style={styles.adjustTimerButton}
+            onPress={() => {
+              if (seconds > 0) {
+                setSeconds((value) => value + 60);
+              } else {
+                setAddedSeconds((value) => value + 60);
+              }
+            }}
+          >
+            <Text style={styles.adjustTimerText}>+1 min</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.sportIconButton,
+              sport === "hurling" && styles.sportIconButtonSelected,
+            ]}
+            onPress={() => setSport("hurling")}
+          >
+            <Text style={styles.sportIconText}>🏑</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.timerButtonRow}>
+          <TouchableOpacity
+            style={
+              matchStatus === "Match Started" || matchStatus === "1st Half Extra Time"
+                ? styles.timerStopButton
+                : styles.timerStartButton
+            }
+            onPress={
+              matchStatus === "1st Half Extra Time"
+                ? confirmEndFirstHalfExtraTime
+                : matchStatus === "Match Started"
+                ? confirmEndFirstHalf
+                : matchStatus === "Half Time" || matchStatus === "Half Time Extra Time"
+                ? () => {}
+                : startFirstHalf
+            }
+          >
+            <Text
+              style={[
+                styles.timerButtonText,
+                (matchStatus === "Match Started" ||
+                  matchStatus === "1st Half Extra Time") && { color: "white" },
+              ]}
+            >
+              {matchStatus === "1st Half Extra Time"
+  ? "End 1st Half ET"
+  : matchStatus === "Match Started"
+  ? "End 1st Half"
+  : matchStatus === "Half Time"
+  ? "Half Time"
+  : "Start 1st Half"}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.pauseIconButton}
+            onPress={() => setTimerRunning(!timerRunning)}
+          >
+            <Text style={styles.pauseIcon}>{timerRunning ? "⏸" : "▶"}</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={
+              matchStatus === "Full Time"
+                ? styles.timerFullTimeButton
+                : matchStatus === "2nd Half Started" ||
+                  matchStatus === "2nd Half Extra Time Started"
+                ? styles.timerStopButton
+                : styles.timerStartButton
+            }
+            onPress={
+              matchStatus === "2nd Half Started" ||
+              matchStatus === "2nd Half Extra Time Started"
+                ? confirmEndMatch
+                : matchStatus === "1st Half Extra Time" ||
+                  matchStatus === "Half Time Extra Time"
+                ? startSecondHalfExtraTime
+                : matchStatus === "Full Time"
+                ? () => {}
+                : startSecondHalf
+            }
+          >
+            <Text
+              style={[
+                styles.timerButtonText,
+                (matchStatus === "2nd Half Started" ||
+                  matchStatus === "2nd Half Extra Time Started" ||
+                  matchStatus === "Full Time") && { color: "white" },
+              ]}
+            >
+              {matchStatus === "Full Time"
+                ? "Full Time"
+                : matchStatus === "2nd Half Started" ||
+                  matchStatus === "2nd Half Extra Time Started"
+                ? "End Match"
+                : matchStatus === "1st Half Extra Time" ||
+                  matchStatus === "Half Time Extra Time"
+                ? "Start 2nd Half ET"
+                : "Start 2nd Half"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <View style={styles.scoreboard}>
+        <View style={styles.scoreCard}>
+          <TextInput
+            style={[
+              styles.teamNameInput,
+              {
+                backgroundColor: leftScoringColour.colour,
+                color: leftButtonTextColour,
+                borderWidth: 1,
+                borderColor: leftScoringColour.borderColour || "#444444",
+              },
+            ]}
+            value={teamName}
+            onChangeText={setTeamName}
+            placeholder="Team name"
+            placeholderTextColor={leftButtonTextColour}
+          />
+          <Text style={styles.gaelicScore}>
+            {formatGaelicScore(teamGoals, teamPoints)}
+          </Text>
+          <Text style={styles.totalScore}>Total: {teamScore}</Text>
+        </View>
+
+        <View style={styles.scoreCard}>
+          <TextInput
+            style={[
+              styles.teamNameInput,
+              {
+                backgroundColor: rightScoringColour.colour,
+                color: rightButtonTextColour,
+                borderWidth: 1,
+                borderColor: rightScoringColour.borderColour || "#444444",
+              },
+            ]}
+            value={oppositionName}
+            onChangeText={setOppositionName}
+            placeholder="Opposition"
+            placeholderTextColor={rightButtonTextColour}
+          />
+          <Text style={styles.gaelicScore}>
+            {formatGaelicScore(oppositionGoals, oppositionPoints)}
+          </Text>
+          <Text style={styles.totalScore}>Total: {oppositionScore}</Text>
+        </View>
+      </View>
+
+      <View style={styles.scoreBox}>
+        <Text style={styles.sectionTitle}>Scoring</Text>
+
+        <View style={styles.twoColumnButtons}>
+          <View style={styles.teamColumn}>
+            <Text style={styles.smallHeading}>{teamName}</Text>
+
+            <TouchableOpacity
+              style={leftScoringButtonStyle}
+              delayLongPress={2000}
+              onLongPress={confirmDeductTeamPoint}
+              onPress={() => {
+                setTeamScore(teamScore + 1);
+                setTeamPoints(teamPoints + 1);
+                addAction("teamPoint");
+              }}
+            >
+              <Text style={[styles.buttonText, { color: leftButtonTextColour }]}>
+                + Point
+              </Text>
+            </TouchableOpacity>
+
+            {isFootball && (
+              <TouchableOpacity
+                style={leftScoringButtonStyle}
+                delayLongPress={2000}
+                onLongPress={confirmDeductTeamTwoPointer}
+                onPress={() => {
+                  setTeamScore(teamScore + 2);
+                  setTeamPoints(teamPoints + 2);
+                  addAction("teamTwoPointer");
+                }}
+              >
+                <Text style={[styles.buttonText, { color: leftButtonTextColour }]}>
+                  + 2 Pointer
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            <TouchableOpacity
+              style={leftScoringButtonStyle}
+              delayLongPress={2000}
+              onLongPress={confirmDeductTeamGoal}
+              onPress={() => {
+                setTeamScore(teamScore + 3);
+                setTeamGoals(teamGoals + 1);
+                addAction("teamGoal");
+              }}
+            >
+              <Text style={[styles.buttonText, { color: leftButtonTextColour }]}>
+                + Goal
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.teamColumn}>
+            <Text style={styles.smallHeading}>{oppositionName}</Text>
+
+            <TouchableOpacity
+              style={rightScoringButtonStyle}
+              delayLongPress={2000}
+              onLongPress={confirmDeductOppositionPoint}
+              onPress={() => {
+                setOppositionScore(oppositionScore + 1);
+                setOppositionPoints(oppositionPoints + 1);
+                addAction("oppositionPoint");
+              }}
+            >
+              <Text style={[styles.buttonText, { color: rightButtonTextColour }]}>
+                + Point
+              </Text>
+            </TouchableOpacity>
+
+            {isFootball && (
+              <TouchableOpacity
+                style={rightScoringButtonStyle}
+                delayLongPress={2000}
+                onLongPress={confirmDeductOppositionTwoPointer}
+                onPress={() => {
+                  setOppositionScore(oppositionScore + 2);
+                  setOppositionPoints(oppositionPoints + 2);
+                  addAction("oppositionTwoPointer");
+                }}
+              >
+                <Text style={[styles.buttonText, { color: rightButtonTextColour }]}>
+                  + 2 Pointer
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            <TouchableOpacity
+              style={rightScoringButtonStyle}
+              delayLongPress={2000}
+              onLongPress={confirmDeductOppositionGoal}
+              onPress={() => {
+                setOppositionScore(oppositionScore + 3);
+                setOppositionGoals(oppositionGoals + 1);
+                addAction("oppositionGoal");
+              }}
+            >
+              <Text style={[styles.buttonText, { color: rightButtonTextColour }]}>
+                + Goal
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+
+      <TouchableOpacity style={styles.undoButton} onPress={undoLastAction}>
+        <Text style={styles.resetText}>Undo Last Action</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={styles.liveMatchButton} onPress={createLiveMatch}>
+        <Text style={styles.shareButtonText}>
+          {liveMatchId ? "Live Match Created" : "Create Live Match"}
+        </Text>
+      </TouchableOpacity>
+
+      <View style={styles.shareButtonRow}>
+        <TouchableOpacity style={styles.shareHalfButton} onPress={shareLiveLink}>
+          <View style={styles.liveTextRow}>
+            <Text style={styles.shareButtonText}>💬 Share Live Link</Text>
+            {liveMatchId ? (
+              <Animated.Text
+                style={[
+                  styles.liveSignalIcon,
+                  {
+                    opacity: liveSignalOpacity,
+                  },
+                ]}
+              >
+                📡
+              </Animated.Text>
+            ) : null}
+          </View>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.shareHalfButton} onPress={shareScoreOnly}>
+          <Text style={styles.shareButtonText}>💬 Share Score</Text>
+        </TouchableOpacity>
+      </View>
+
+      <TouchableOpacity style={styles.newMatchButton} onPress={confirmResetMatch}>
+        <Text style={styles.resetText}>New Match</Text>
+      </TouchableOpacity>
+
+      <View style={styles.themeButtonRow}>
+        <TouchableOpacity
+          style={styles.themeHalfButton}
+          onPress={() => {
+            setLeftScoringColourIndex((currentIndex) =>
+              currentIndex === scoringColours.length - 1 ? 0 : currentIndex + 1
+            );
+          }}
+        >
+          <Text style={styles.themeButtonText}>
+            Left Colour: {leftScoringColour.name}
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.themeHalfButton}
+          onPress={() => {
+            setRightScoringColourIndex((currentIndex) =>
+              currentIndex === scoringColours.length - 1 ? 0 : currentIndex + 1
+            );
+          }}
+        >
+          <Text style={styles.themeButtonText}>
+            Right Colour: {rightScoringColour.name}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </ScrollView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+  padding: 12,
+  paddingBottom: 110,
+  backgroundColor: "#dcebd7",
+  minHeight: "100%",
+},
+  title: {
+    fontSize: 24,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginBottom: 8,
+    marginTop: 18,
+  },
+  compactTimerBox: {
+    backgroundColor: "white",
+    borderRadius: 12,
+    padding: 8,
+    marginBottom: 8,
+    elevation: 3,
+  },
+  currentHalfText: {
+    fontSize: 12,
+    fontWeight: "bold",
+    color: "#555",
+    textAlign: "center",
+    marginBottom: 2,
+  },
+  timerTimeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    marginBottom: 6,
+  },
+  sportIconButton: {
+    backgroundColor: "#eeeeee",
+    borderRadius: 20,
+    paddingVertical: 5,
+    paddingHorizontal: 8,
+    borderWidth: 2,
+    borderColor: "#dddddd",
+  },
+  sportIconButtonSelected: {
+    backgroundColor: "#e8f3e5",
+    borderColor: "#146c2e",
+  },
+  sportIconText: {
+    fontSize: 18,
+    textAlign: "center",
+  },
+  timerButtonRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  timerStartButton: {
+    flex: 1,
+    backgroundColor: "#d6d6d6",
+    paddingVertical: 9,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#999999",
+  },
+timerStopButton: {
+  flex: 1,
+  backgroundColor: "#8b1a1a",
+  paddingVertical: 9,
+  borderRadius: 8,
+},
+
+timerFullTimeButton: {
+  flex: 1,
+  backgroundColor: "#146c2e",
+  paddingVertical: 9,
+  borderRadius: 8,
+},
+  compactTimerText: {
+    fontSize: 26,
+    fontWeight: "bold",
+    textAlign: "center",
+    minWidth: 80,
+  },
+  addedTimeText: {
+    color: "red",
+  },
+  pauseIconButton: {
+    backgroundColor: "#dddddd",
+    paddingVertical: 3,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+  },
+  pauseIcon: {
+    fontSize: 24,
+    fontWeight: "bold",
+    textAlign: "center",
+  },
+  adjustTimerButton: {
+    backgroundColor: "#dddddd",
+    paddingVertical: 5,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
+  adjustTimerText: {
+    fontSize: 12,
+    fontWeight: "bold",
+    color: "#222",
+  },
+  timerButtonText: {
+    color: "#222222",
+    fontSize: 12,
+    fontWeight: "bold",
+    textAlign: "center",
+  },
+  scoreboard: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 8,
+  },
+  scoreCard: {
+    flex: 1,
+    backgroundColor: "white",
+    borderRadius: 12,
+    padding: 10,
+    elevation: 3,
+  },
+  teamNameInput: {
+    fontSize: 15,
+    fontWeight: "bold",
+    textAlign: "center",
+    borderRadius: 8,
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+  },
+  scoreBox: {
+    backgroundColor: "white",
+    borderRadius: 14,
+    padding: 10,
+    marginBottom: 10,
+    elevation: 3,
+  },
+  smallHeading: {
+    fontSize: 14,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginBottom: 6,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginBottom: 8,
+  },
+  gaelicScore: {
+    fontSize: 34,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginTop: 4,
+  },
+  totalScore: {
+    fontSize: 12,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginTop: 2,
+    color: "#555",
+  },
+  twoColumnButtons: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 8,
+  },
+  teamColumn: {
+    flex: 1,
+    gap: 6,
+  },
+  button: {
+    backgroundColor: "#7a0019",
+    padding: 10,
+    borderRadius: 8,
+  },
+  buttonDark: {
+    backgroundColor: "#222",
+    padding: 10,
+    borderRadius: 8,
+  },
+  buttonText: {
+    color: "white",
+    fontSize: 13,
+    fontWeight: "bold",
+    textAlign: "center",
+  },
+  liveMatchButton: {
+    backgroundColor: "#0057b8",
+    padding: 11,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  shareButtonRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 8,
+  },
+  shareHalfButton: {
+    flex: 1,
+    backgroundColor: "#146c2e",
+    padding: 11,
+    borderRadius: 8,
+  },
+  shareButtonText: {
+    color: "white",
+    fontSize: 14,
+    fontWeight: "bold",
+    textAlign: "center",
+  },
+  liveTextRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+  },
+  liveSignalIcon: {
+    fontSize: 13,
+  },
+  undoButton: {
+    backgroundColor: "#444",
+    padding: 11,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  newMatchButton: {
+    backgroundColor: "#999",
+    padding: 11,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+  resetText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "bold",
+    textAlign: "center",
+  },
+  themeButtonRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 8,
+  },
+  themeHalfButton: {
+    flex: 1,
+    backgroundColor: "#444444",
+    padding: 11,
+    borderRadius: 8,
+  },
+  themeButtonText: {
+    color: "white",
+    fontSize: 12,
+    fontWeight: "bold",
+    textAlign: "center",
+  }
+});
