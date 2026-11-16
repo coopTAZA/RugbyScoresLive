@@ -752,6 +752,101 @@
           justify-content: center;
         }
       }
+
+      .ios-download-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 11px;
+        margin: 16px auto 2px;
+        padding: 10px 22px;
+        min-width: 188px;
+        box-sizing: border-box;
+        border: 1px solid #6b8c78;
+        border-radius: 12px;
+        background: #080f0d;
+        color: #fff;
+        text-decoration: none;
+        box-shadow: 0 5px 14px rgba(0, 0, 0, 0.2);
+      }
+      .ios-download-button:hover {
+        background: #17271f;
+      }
+      .ios-download-button span:last-child {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        line-height: 1.15;
+      }
+      .ios-download-button small {
+        font-size: 11px;
+        color: #e5e7eb;
+      }
+      .ios-download-button strong {
+        font-size: 22px;
+        letter-spacing: -0.4px;
+      }
+      .ios-download-button .apple-mark {
+        width: 25px;
+        height: 29px;
+        display: inline-block;
+        position: relative;
+        font-size: 0;
+        background: #fff;
+        clip-path: polygon(
+          27% 25%,
+          44% 29%,
+          57% 28%,
+          72% 23%,
+          85% 30%,
+          77% 43%,
+          73% 56%,
+          87% 66%,
+          77% 88%,
+          65% 97%,
+          51% 91%,
+          38% 97%,
+          23% 91%,
+          10% 72%,
+          7% 49%,
+          13% 33%
+        );
+      }
+      .ios-download-button .apple-mark:after {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 13px;
+        width: 10px;
+        height: 9px;
+        background: #fff;
+        transform: rotate(-30deg);
+        border-radius: 10px 0;
+      }
+
+      /* Official App Store badge, with readable fallback if Apple's image is blocked */
+      .app-store-official-link {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin: 14px auto 4px;
+        text-decoration: none;
+      }
+      .app-store-official-link img {
+        display: block;
+        width: 180px;
+        height: auto;
+        min-height: 56px;
+      }
+      .app-store-fallback {
+        background: #000;
+        color: #fff;
+        border: 1px solid #888;
+        border-radius: 10px;
+        padding: 15px 18px;
+        font-weight: 700;
+        font-size: 16px;
+      }
     </style>
   </head>
 
@@ -831,7 +926,27 @@
           Create and share your own rugby live matches with
           <strong>Rugby Scores Live</strong>.
         </p>
-        <div class="promo-text">Rugby Scores Live app coming soon</div>
+        <a
+          class="app-store-official-link"
+          href="https://apps.apple.com/app/id6815415068"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Download Rugby Scores Live on the App Store"
+        >
+          <img
+            src="https://developer.apple.com/assets/elements/badges/download-on-the-app-store.svg"
+            alt="Download on the App Store"
+            width="180"
+            height="60"
+            onerror="
+              this.style.display = 'none';
+              this.nextElementSibling.style.display = 'inline-block';
+            "
+          />
+          <span class="app-store-fallback" style="display: none"
+            >Download on the App Store</span
+          >
+        </a>
       </div>
 
       <div id="matchQrBox" class="match-qr-box" style="display: none">
@@ -910,7 +1025,7 @@
       <div class="app-promo">
         <div class="promo-title">Rugby Scores Live</div>
         <div class="promo-text">
-          App coming soon to Google Play and the App Store
+          Available on the Apple App Store · Google Play coming soon
         </div>
         <p class="contact-email">
           SidelineSportsApps<span>@</span>gmail<span>.</span>com
