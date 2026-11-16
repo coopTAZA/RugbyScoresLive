@@ -1,0 +1,1330 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Rugby Scores Live Score</title>
+<meta property="og:title" content="Rugby Scores Live Score" />
+<meta property="og:description" content=" " />
+<meta property="og:site_name" content="Sideline Sports Apps" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="format-detection" content="telephone=no,email=no,address=no">
+
+    <style>
+ 
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 20px;
+  text-align: center;
+  min-height: 100vh;
+  box-sizing: border-box;
+  background-color: #2f6b3a;
+
+  background-image:
+    linear-gradient(
+      to right,
+      transparent 4%,
+      rgba(255,255,255,0.28) 4%,
+      rgba(255,255,255,0.28) 4.3%,
+      transparent 4.3%,
+      transparent 95.7%,
+      rgba(255,255,255,0.28) 95.7%,
+      rgba(255,255,255,0.28) 96%,
+      transparent 96%
+    ),
+    linear-gradient(
+      to bottom,
+      transparent 9%,
+      rgba(255,255,255,0.28) 9%,
+      rgba(255,255,255,0.28) 9.4%,
+      transparent 9.4%,
+      transparent 27%,
+      rgba(255,255,255,0.20) 27%,
+      rgba(255,255,255,0.20) 27.4%,
+      transparent 27.4%,
+      transparent 49.8%,
+      rgba(255,255,255,0.32) 49.8%,
+      rgba(255,255,255,0.32) 50.2%,
+      transparent 50.2%,
+      transparent 72.6%,
+      rgba(255,255,255,0.20) 72.6%,
+      rgba(255,255,255,0.20) 73%,
+      transparent 73%,
+      transparent 90.6%,
+      rgba(255,255,255,0.28) 90.6%,
+      rgba(255,255,255,0.28) 91%,
+      transparent 91%
+    ),
+    repeating-linear-gradient(
+      90deg,
+      rgba(255,255,255,0.025) 0px,
+      rgba(255,255,255,0.025) 90px,
+      rgba(0,0,0,0.025) 90px,
+      rgba(0,0,0,0.025) 180px
+    );
+}
+      .card {
+        background: white;
+        max-width: 430px;
+        margin: 30px auto;
+        padding: 22px;
+        border-radius: 20px;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+      }
+
+      h1 {
+        margin-top: 0;
+        font-size: 28px;
+        margin-bottom: 8px;
+      }
+      .download-app {
+  margin-top: 24px;
+  padding: 20px 16px;
+  border: 1px solid #dcdcdc;
+  border-radius: 14px;
+  background: #f7f7f7;
+  text-align: center;
+}
+
+.download-app h2 {
+  margin: 0 0 10px;
+  color: #146c2e;
+  font-size: 22px;
+}
+
+.download-app p {
+  margin: 0 0 18px;
+  color: #444;
+  line-height: 1.5;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.store-badges {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.store-badges a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.store-badge {
+  display: block;
+  width: auto;
+  object-fit: contain;
+}
+
+.google-badge {
+  height: 60px;
+}
+
+.apple-badge {
+  height: 40px;
+}
+
+.store-badges a:hover {
+  opacity: 0.88;
+}
+
+      .sub-title {
+        font-size: 14px;
+        color: #555;
+        font-weight: bold;
+        margin-bottom: 10px;
+      }
+
+      .live-dot {
+  color: #b00020;
+  font-size: 14px;
+  font-weight: bold;
+  margin-right: 6px;
+}
+
+      .status-box {
+        background: #146c2e;
+        color: white;
+        border-radius: 14px;
+        padding: 12px;
+        margin: 12px 0 18px 0;
+        font-size: 18px;
+        font-weight: bold;
+      }
+
+      .score-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        margin: 20px 0;
+      }
+
+      .team {
+  flex: 1;
+  background: #eeeeee;
+  border-radius: 16px;
+  padding: 14px 8px;
+}
+
+      .team-name {
+        font-weight: 900;
+        font-size: 18px;
+        margin-bottom: 12px;
+        min-height: 38px;
+        color: #111;
+        border-bottom: 2px solid #090f0b;
+        padding-bottom: 3px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .score {
+        font-size: 44px;
+        font-weight: 900;
+      }
+
+      .total {
+        font-size: 13px;
+        color: #555;
+        margin-top: 5px;
+        font-weight: bold;
+      }
+.logo {
+  width: 130px;
+  height: 130px;
+  object-fit: contain;
+  margin-bottom: 8px;
+}
+      .time-box {
+        background: #333333;
+        color: white;
+        border-radius: 14px;
+        padding: 14px;
+        margin-top: 18px;
+        font-size: 18px;
+        font-weight: bold;
+      }
+
+      .small {
+  margin-top: 12px;
+  color: #666;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+
+      .comments-box {
+        margin-top: 18px;
+        background: #f6f6f6;
+        border-radius: 14px;
+        padding: 12px;
+        text-align: left;
+      }
+
+      .comments-title {
+        font-weight: bold;
+        text-align: center;
+        margin-bottom: 10px;
+      }
+
+      .comment-item {
+        background: white;
+        border-left: 4px solid #146c2e;
+        border-radius: 10px;
+        padding: 9px;
+        margin-bottom: 8px;
+        font-size: 13px;
+      }
+
+      .comment-time {
+        font-weight: bold;
+        color: #146c2e;
+        margin-right: 6px;
+      }
+
+      .app-promo {
+        margin-top: 18px;
+        padding: 12px;
+        border-radius: 12px;
+        background: #f1f5f1;
+        border: 1px solid #d0d8d0;
+        text-align: center;
+        color: #222;
+      }
+
+      .promo-title {
+        font-size: 14px;
+        font-weight: bold;
+        margin-bottom: 4px;
+      }
+
+.contact-email {
+  margin-top: 8px;
+  font-size: 14px;
+  color: rgb(57, 85, 48);
+  text-align: center;
+  text-decoration: none !important;
+  border-bottom: none !important;
+}
+      .promo-text {
+        font-size: 13px;
+        color: #146c2e;
+        font-weight: bold;
+      }
+      .powered-heading {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+
+.sound-toggle {
+  margin-top: 10px;
+  padding: 9px 14px;
+  border: 1px solid #146c2e;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #146c2e;
+  font-size: 13px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.sound-toggle.sound-on {
+  background: #146c2e;
+  color: #ffffff;
+}
+
+#finalHeader {
+  margin: 0 auto 18px;
+  max-width: 430px;
+  border-radius: 20px;
+  overflow: hidden;
+  color: white;
+  background: linear-gradient(
+    90deg,
+    #7a1118 0%,
+    #7a1118 50%,
+    #d71920 50%,
+    #d71920 100%
+  );
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+}
+
+.final-title {
+  padding: 14px 10px;
+  font-size: 18px;
+  font-weight: 900;
+  color: #ffd54a;
+  background: rgba(0, 0, 0, 0.22);
+  text-align: center;
+}
+
+.final-teams {
+  display: grid;
+  grid-template-columns: 1fr 54px 1fr;
+  align-items: center;
+  gap: 8px;
+  padding: 18px 12px 12px;
+}
+
+.final-team {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 900;
+  text-align: center;
+}
+
+.final-crest {
+  width: 92px;
+  height: 92px;
+  object-fit: contain;
+  background: white;
+  border-radius: 14px;
+  padding: 6px;
+}
+
+.final-vs {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: white;
+  color: #111;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 900;
+  margin: 0 auto;
+}
+
+.final-details {
+  margin: 0 12px 12px;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.28);
+  border-radius: 12px;
+  line-height: 1.7;
+  font-size: 14px;
+  text-align: center;
+}
+
+#kickoffCountdown {
+  margin: 0 12px 16px;
+  padding: 14px 10px;
+  background: rgba(40, 20, 25, 0.72);
+  color: #ffd54a;
+  border: 1px solid rgba(255, 213, 74, 0.65);
+  border-radius: 12px;
+  font-size: 20px;
+  font-weight: 900;
+  text-align: center;
+  letter-spacing: 0.5px;
+}
+
+#finalHeader.compact-final .final-crest {
+  width: 52px;
+  height: 52px;
+}
+
+#finalHeader.compact-final .final-teams {
+  padding: 10px 12px;
+}
+
+#viewerCount {
+  font-weight: bold;
+  color: #146c2e;
+}
+
+#finalHeader.compact-final .final-title {
+  padding: 8px 10px;
+  font-size: 15px;
+}
+
+
+.match-qr-box {
+  margin-top: 18px;
+  padding: 14px;
+  border-radius: 12px;
+  background: #ffffff;
+  border: 1px solid #d0d8d0;
+  text-align: center;
+}
+
+.match-qr-title {
+  font-size: 14px;
+  font-weight: bold;
+  color: #222;
+  margin-bottom: 4px;
+}
+
+.match-qr-text {
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 10px;
+}
+
+#matchQrCode {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+#matchQrCode img,
+#matchQrCode canvas {
+  width: 140px !important;
+  height: 140px !important;
+}
+
+      .error {
+        color: #8b1a1a;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+
+  <body>
+
+
+  <div class="card" style="margin-top:10px;">
+
+  <h1 class="powered-heading">
+    Powered by Sideline Sports Apps
+  </h1>
+
+  <div id="status">Loading match...</div>
+
+  <div id="match" style="display: none;">
+        <div class="status-box" id="matchStatus">Not Started</div>
+<div
+  id="competition"
+  style="
+    display: none;
+    font-size: 17px;
+    font-weight: bold;
+    color: #146c2e;
+    margin: 4px 0 12px;
+  "
+></div>
+        <div class="score-row">
+          <div class="team">
+            <div class="team-name" id="teamName">Team</div>
+            <div class="score" id="teamScoreText">0</div>
+          </div>
+
+          <div class="team">
+            <div class="team-name" id="oppositionName">Opposition</div>
+            <div class="score" id="oppositionScoreText">0</div>
+          </div>
+        </div>
+
+        <div class="time-box" id="timeInfo">1st Half - 40:00</div>
+<div
+  id="sinBinInfo"
+  style="
+    display:none;
+    text-align:center;
+    margin-top:8px;
+    padding:8px;
+    background:#fff3cd;
+    border-radius:10px;
+    font-weight:bold;
+    font-size:15px;
+  "
+></div>
+
+        <div class="small">
+  <span class="live-dot" id="liveDot">● LIVE</span>
+  <span id="updatedAt">Waiting for updates...</span>
+  <span id="viewerCount">
+  <span class="viewer-icon">👥</span> Viewers: 0
+</span>
+</div>
+
+<button id="soundToggle" class="sound-toggle" type="button">
+  🔇 Tap for Score Sounds
+</button>
+
+        <div class="comments-box">
+          <div class="comments-title">Match Comments</div>
+          <div id="commentsList">No comments yet.</div>
+        </div>
+      </div>
+      <div class="download-app">
+  <p>
+    Create and share your own rugby live matches with
+    <strong>Rugby Scores Live</strong>.
+  </p>
+  <div class="promo-text">Rugby Scores Live app coming soon</div>
+</div>
+
+
+<div id="matchQrBox" class="match-qr-box" style="display:none;">
+  <div class="match-qr-title" style="font-size:15px;">Share this live match</div>
+  <div class="match-qr-text">
+    Let someone scan this QR code to follow the live score on their device. You can also use the share button below.
+  </div>
+  <div id="matchQrCode"></div>
+  <button
+  id="shareLiveGameButton"
+  type="button"
+  style="
+  display:block;
+  width:80%;
+  max-width:320px;
+  box-sizing:border-box;
+  margin:14px auto 0;
+  padding:9px 14px;
+  border:none;
+  border-radius:10px;
+  background:#15803d;
+  color:white;
+  font-size:15px;
+  font-weight:bold;
+  cursor:pointer;
+"
+>
+  💬 Share on WhatsApp
+</button>
+
+<div
+  id="shareLiveMessage"
+  style="display:none; text-align:center; color:#166534; font-weight:bold; margin-top:8px;"
+>
+  Match link copied
+</div>
+
+<script>
+  document
+    .getElementById("shareLiveGameButton")
+    .addEventListener("click", () => {
+      const teamName =
+        document.getElementById("teamName").textContent.trim();
+
+      const oppositionName =
+        document.getElementById("oppositionName").textContent.trim();
+
+      const message =
+        "🏉 " + teamName + " v " + oppositionName +
+        "\n\nFollow this game live on Rugby Scores Live:\n\n" +
+        window.location.href;
+
+      const whatsappUrl =
+        "https://api.whatsapp.com/send?text=" +
+        encodeURIComponent(message);
+
+      window.location.href = whatsappUrl;
+    });
+</script>
+</div>
+
+<div class="app-promo">
+        <div class="promo-title">Rugby Scores Live</div>
+        <div class="promo-text">Available on Google Play and the App Store</div>
+        <p class="contact-email">SidelineSportsApps<span>@</span>gmail<span>.</span>com</p>
+      </div>
+    </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+
+  import {
+    getFirestore,
+    doc,
+    onSnapshot,
+    setDoc,
+    increment,
+    serverTimestamp,
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  import {
+    getDatabase,
+    ref,
+    push,
+    set,
+    onValue,
+    onDisconnect,
+  } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyCE5t6Qhs00PUV4CcKsr4j3baR3x5JgETE",
+    authDomain: "football-scores-live-3da9f.firebaseapp.com",
+    projectId: "football-scores-live-3da9f",
+    storageBucket: "football-scores-live-3da9f.firebasestorage.app",
+    messagingSenderId: "827352768127",
+    appId: "1:827352768127:web:ee180bce9db662d5c1294a",
+    databaseURL:
+      "https://football-scores-live-3da9f-default-rtdb.europe-west1.firebasedatabase.app",
+  };
+
+  const app = initializeApp(firebaseConfig);
+
+  const db = getFirestore(app);
+  const realtimeDb = getDatabase(app);
+
+  const params = new URLSearchParams(window.location.search);
+  const matchId = params.get("match");
+
+  async function recordPrivateMatchView(currentMatchId) {
+    if (!/^\d+$/.test(currentMatchId)) {
+      return;
+    }
+
+    const visitorStorageKey = "rslAnalyticsVisitorId";
+    let visitorId = localStorage.getItem(visitorStorageKey);
+    const isNewSiteVisitor = !visitorId;
+
+    if (!visitorId) {
+      visitorId = window.crypto?.randomUUID?.() ||
+        `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    }
+
+    const matchStorageKey = `rslAnalyticsMatch:${currentMatchId}`;
+    const isNewMatchVisitor =
+      localStorage.getItem(matchStorageKey) !== visitorId;
+
+    try {
+      await Promise.all([
+        setDoc(
+          doc(db, "viewAnalytics", "global"),
+          {
+            totalViews: increment(1),
+            uniqueViewers: increment(isNewSiteVisitor ? 1 : 0),
+            lastViewedAt: serverTimestamp(),
+          },
+          { merge: true }
+        ),
+        setDoc(
+          doc(db, "matchViewAnalytics", currentMatchId),
+          {
+            matchId: currentMatchId,
+            totalViews: increment(1),
+            uniqueViewers: increment(isNewMatchVisitor ? 1 : 0),
+            lastViewedAt: serverTimestamp(),
+          },
+          { merge: true }
+        ),
+      ]);
+
+      localStorage.setItem(visitorStorageKey, visitorId);
+      localStorage.setItem(matchStorageKey, visitorId);
+    } catch (error) {
+      // Analytics must never interrupt loading or updating the live match.
+      console.warn("Private view analytics unavailable:", error);
+    }
+  }
+
+  if (matchId) {
+    recordPrivateMatchView(matchId);
+  }
+
+  const matchQrBox = document.getElementById("matchQrBox");
+  const matchQrCode = document.getElementById("matchQrCode");
+
+  if (matchId && matchQrBox && matchQrCode && window.QRCode) {
+    const liveMatchUrl =
+      `${window.location.origin}${window.location.pathname}?match=${encodeURIComponent(matchId)}`;
+
+    matchQrBox.style.display = "block";
+
+    new QRCode(matchQrCode, {
+      text: liveMatchUrl,
+      width: 140,
+      height: 140,
+      correctLevel: QRCode.CorrectLevel.M,
+    });
+  }
+
+
+  const status = document.getElementById("status");
+const matchDiv = document.getElementById("match");
+const viewerCountElement = document.getElementById("viewerCount");
+
+let scoreSoundsEnabled =
+  localStorage.getItem("scoreSoundsEnabled") === "true";
+
+const soundToggle = document.getElementById("soundToggle");
+
+if (scoreSoundsEnabled) {
+  soundToggle.textContent = "🔊 Score Sounds: ON";
+  soundToggle.classList.add("sound-on");
+} else {
+  soundToggle.textContent = "🔇 Tap for Score Sounds";
+  soundToggle.classList.remove("sound-on");
+}
+
+
+  let previousTeamScore = null;
+  let previousOppositionScore = null;
+  let audioContext = null;
+  let scoreSoundBuffer = null;
+
+  async function loadScoreSound() {
+    if (scoreSoundBuffer) {
+      return scoreSoundBuffer;
+    }
+
+    const ctx = getAudioContext();
+
+    if (!ctx) {
+      return null;
+    }
+
+    try {
+      const response = await fetch("score-sound.mp3", {
+        cache: "no-store",
+      });
+
+      if (!response.ok) {
+        throw new Error(`Score sound HTTP ${response.status}`);
+      }
+
+      const arrayBuffer = await response.arrayBuffer();
+      scoreSoundBuffer = await ctx.decodeAudioData(arrayBuffer);
+      return scoreSoundBuffer;
+    } catch (error) {
+      console.log("Score sound failed to load:", error);
+      return null;
+    }
+  }
+
+  async function playSharedScoreSound() {
+    if (!scoreSoundsEnabled) {
+      return;
+    }
+
+    const ctx = getAudioContext();
+
+    if (!ctx) {
+      return;
+    }
+
+    if (ctx.state === "suspended") {
+      await ctx.resume();
+    }
+
+    const buffer = await loadScoreSound();
+
+    if (!buffer) {
+      return;
+    }
+
+    const source = ctx.createBufferSource();
+    const gain = ctx.createGain();
+
+    source.buffer = buffer;
+    gain.gain.value = 0.35;
+
+    source.connect(gain);
+    gain.connect(ctx.destination);
+
+    source.start(0);
+  }
+
+  function getAudioContext() {
+    if (!audioContext) {
+      const AudioContextClass =
+        window.AudioContext || window.webkitAudioContext;
+
+      if (AudioContextClass) {
+        audioContext = new AudioContextClass();
+      }
+    }
+
+    return audioContext;
+  }
+
+  function playTone(frequency, startDelay, duration, volume = 0.12) {
+    if (!scoreSoundsEnabled) {
+      return;
+    }
+
+    const ctx = getAudioContext();
+
+    if (!ctx) {
+      return;
+    }
+
+    if (ctx.state === "suspended") {
+      ctx.resume();
+    }
+
+    const startTime = ctx.currentTime + startDelay;
+    const oscillator = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    oscillator.type = "sine";
+    oscillator.frequency.setValueAtTime(frequency, startTime);
+
+    gain.gain.setValueAtTime(0.0001, startTime);
+    gain.gain.exponentialRampToValueAtTime(
+      volume,
+      startTime + 0.01
+    );
+    gain.gain.exponentialRampToValueAtTime(
+      0.0001,
+      startTime + duration
+    );
+
+    oscillator.connect(gain);
+    gain.connect(ctx.destination);
+
+    oscillator.start(startTime);
+    oscillator.stop(startTime + duration + 0.02);
+  }
+
+  function playScoreSound(scoreValue = 1) {
+    if (!scoreSoundsEnabled || scoreValue <= 0) {
+      return;
+    }
+
+    // Every positive score uses the same notification sound.
+    playSharedScoreSound();
+  }
+
+  if (soundToggle) {
+    soundToggle.addEventListener("click", async () => {
+      scoreSoundsEnabled = !scoreSoundsEnabled;
+localStorage.setItem(
+  "scoreSoundsEnabled",
+  scoreSoundsEnabled.toString()
+);
+      if (scoreSoundsEnabled) {
+        const ctx = getAudioContext();
+
+        if (ctx && ctx.state === "suspended") {
+          await ctx.resume();
+        }
+
+        // Preload/decode the shared score notification during the user's tap.
+        await loadScoreSound();
+
+        soundToggle.textContent = "🔊 Score Sounds: ON";
+        soundToggle.classList.add("sound-on");
+
+        // Confirmation beep so the viewer knows sound is active.
+        playScoreSound(1);
+      } else {
+        soundToggle.textContent = "🔇 Score Sounds: OFF";
+        soundToggle.classList.remove("sound-on");
+      }
+    });
+  }
+
+  function formatTime(totalSeconds) {
+    const safeSeconds = totalSeconds || 0;
+    const minutes = Math.floor(safeSeconds / 60);
+    const seconds = safeSeconds % 60;
+
+    return `${minutes.toString().padStart(2, "0")}:${seconds
+      .toString()
+      .padStart(2, "0")}`;
+  }
+
+  function formatUpdatedAt(updatedAt) {
+    if (!updatedAt) {
+      return "Waiting for updates...";
+    }
+
+    const date = new Date(updatedAt);
+
+    if (Number.isNaN(date.getTime())) {
+      return "Last updated: " + updatedAt;
+    }
+
+    return (
+      "Last updated: " +
+      date.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      })
+    );
+  }
+
+  function startViewerTracking(currentMatchId) {
+    const viewersRef = ref(
+      realtimeDb,
+      `matchViewers/${currentMatchId}`
+    );
+
+    const connectedRef = ref(realtimeDb, ".info/connected");
+
+    onValue(viewersRef, (snapshot) => {
+      const viewerCount = snapshot.size;
+
+      if (viewerCountElement) {
+        viewerCountElement.textContent = `👥 Viewers: ${viewerCount}`;
+      }
+    });
+
+    onValue(connectedRef, async (snapshot) => {
+      if (snapshot.val() !== true) {
+        return;
+      }
+
+      const currentViewerRef = push(viewersRef);
+
+      try {
+        await onDisconnect(currentViewerRef).remove();
+
+        await set(currentViewerRef, {
+          connectedAt: Date.now(),
+        });
+      } catch (error) {
+        console.error("Viewer tracking error:", error);
+      }
+    });
+  }
+
+  if (!matchId) {
+    status.innerHTML =
+      '<span class="error">No match ID found. Open this page using a live match link.</span>';
+
+    if (viewerCountElement) {
+      viewerCountElement.style.display = "none";
+    }
+  } else {
+    startViewerTracking(matchId);
+
+let localSeconds = 0;
+let localAddedSeconds = 0;
+let localCurrentHalf = "";
+let localMatchStatus = "";
+let localTeam1SinBin = null;
+let localTeam2SinBin = null;
+let localTeam1SinBinStartedAt = null;
+let localTeam2SinBinStartedAt = null;
+
+    const matchRef = doc(db, "matches", matchId);
+
+    onSnapshot(
+      matchRef,
+      (snapshot) => {
+        if (!snapshot.exists()) {
+          status.innerHTML =
+            '<span class="error">Match not found.</span>';
+
+          if (viewerCountElement) {
+            viewerCountElement.style.display = "none";
+          }
+
+          return;
+        }
+
+        const data = snapshot.data();
+
+        localSeconds = Number(data.seconds || 0);
+localAddedSeconds = Number(data.addedSeconds || 0);
+localCurrentHalf = data.currentHalf || "";
+localMatchStatus = data.matchStatus || "";
+localTeam1SinBin =
+  data.team1SinBin !== null && data.team1SinBin !== undefined
+    ? Number(data.team1SinBin)
+    : null;
+
+localTeam2SinBin =
+  data.team2SinBin !== null && data.team2SinBin !== undefined
+    ? Number(data.team2SinBin)
+    : null;
+
+localTeam1SinBinStartedAt =
+  data.team1SinBinStartedAt !== null &&
+  data.team1SinBinStartedAt !== undefined
+    ? Number(data.team1SinBinStartedAt)
+    : null;
+
+localTeam2SinBinStartedAt =
+  data.team2SinBinStartedAt !== null &&
+  data.team2SinBinStartedAt !== undefined
+    ? Number(data.team2SinBinStartedAt)
+    : null;
+
+
+        const currentTeamScore = Number(data.teamScore || 0);
+        const currentOppositionScore = Number(
+          data.oppositionScore || 0
+        );
+
+        if (
+          previousTeamScore !== null &&
+          previousOppositionScore !== null
+        ) {
+          const teamIncrease =
+            currentTeamScore - previousTeamScore;
+          const oppositionIncrease =
+            currentOppositionScore - previousOppositionScore;
+
+          const scoreIncrease = Math.max(
+            teamIncrease,
+            oppositionIncrease
+          );
+
+          if (scoreIncrease > 0) {
+            playScoreSound(scoreIncrease);
+          }
+        }
+
+        previousTeamScore = currentTeamScore;
+        previousOppositionScore = currentOppositionScore;
+
+        const liveDot = document.getElementById("liveDot");
+
+        const statusTextForLive = (
+  data.matchStatus || ""
+)
+  .toString()
+  .toLowerCase();
+
+const isFinished =
+  statusTextForLive.includes("full time");
+
+const isHalfTime =
+  statusTextForLive.includes("half time");
+
+const isExtraTimeReady =
+  statusTextForLive.includes("extra time ready");
+
+const hasLiveStatus =
+  !isFinished &&
+  !isHalfTime &&
+  !isExtraTimeReady &&
+  (
+    statusTextForLive.includes("match started") ||
+    statusTextForLive.includes("1st half") ||
+    statusTextForLive.includes("2nd half") ||
+    statusTextForLive.includes("extra time")
+  );
+
+const maxLiveTime = 2.5 * 60 * 60 * 1000; // 2.5 hours
+const startTime = Number(data.matchStartTime || 0);
+
+const withinLiveTime =
+  !startTime || Date.now() - startTime < maxLiveTime;
+
+if (hasLiveStatus && withinLiveTime) {
+  liveDot.style.display = "inline";
+} else {
+  liveDot.style.display = "none";
+}
+
+        status.innerHTML = "";
+        status.style.display = "none";
+        matchDiv.style.display = "block";
+
+      const rawMatchStatus = (data.matchStatus || "Not Started").toString();
+const statusLower = rawMatchStatus.toLowerCase();
+
+let displayMatchStatus = "Not Started";
+
+if (statusLower.includes("extra time ready")) {
+  displayMatchStatus = "Full Time - Extra Time";
+} else if (statusLower.includes("full time")) {
+  displayMatchStatus = "Full Time";
+} else if (statusLower.includes("half time")) {
+  displayMatchStatus = "Half Time";
+} else if (statusLower.includes("2nd half")) {
+  displayMatchStatus = "2nd Half";
+} else if (
+  statusLower.includes("match started") ||
+  statusLower.includes("1st half") ||
+  statusLower.includes("extra time")
+) {
+  displayMatchStatus = "Match Started";
+}
+
+document.getElementById("matchStatus").textContent =
+  displayMatchStatus;  
+document.getElementById("teamName").textContent =
+  data.teamName || "Team";
+
+document.getElementById("oppositionName").textContent =
+  data.oppositionName || "Opposition";
+const competitionElement =
+  document.getElementById("competition");
+
+if (data.competition && data.competition.trim()) {
+  competitionElement.textContent = data.competition;
+  competitionElement.style.display = "block";
+} else {
+  competitionElement.style.display = "none";
+}
+document.getElementById("teamScoreText").textContent =
+  String(data.teamScore || 0);
+
+document.getElementById("oppositionScoreText").textContent =
+  String(data.oppositionScore || 0);
+
+
+let timeText = "";
+const statusText = (data.matchStatus || "")
+  .toString()
+  .toLowerCase();
+
+const halfText = (data.currentHalf || "")
+  .toString()
+  .toLowerCase();
+
+if (statusText.includes("extra time ready")) {
+
+  timeText = "ET 1st Half - Time Remaining 10:00";
+
+} else if (
+  statusText.includes("half time") ||
+  halfText.includes("half time")
+) {
+
+  timeText =
+    data.matchStatus || data.currentHalf;
+
+} else if (
+  statusText.includes("full time") ||
+  halfText.includes("full time")
+) {
+
+  timeText = "Full Time";
+
+} else if (
+  halfText.includes("extra time") &&
+  halfText.includes("1st half")
+) {
+
+  if ((data.seconds || 0) > 0) {
+    timeText =
+      `1st Half ET - Time Remaining: ${formatTime(data.seconds)}`;
+  } else {
+    timeText =
+      `1st Half ET - Added Time: ${formatTime(data.addedSeconds)}`;
+  }
+
+} else if (
+  halfText.includes("extra time") &&
+  halfText.includes("2nd half")
+) {
+
+  if ((data.seconds || 0) > 0) {
+    timeText =
+      `2nd Half ET - Time Remaining: ${formatTime(data.seconds)}`;
+  } else {
+    timeText =
+      `2nd Half ET - Added Time: ${formatTime(data.addedSeconds)}`;
+  }
+
+} else if ((data.seconds || 0) > 0) {
+
+  timeText =
+    `${data.currentHalf || "Match"} - Time Remaining: ${formatTime(
+      data.seconds
+    )}`;
+
+} else {
+
+  timeText =
+    `${data.currentHalf || "Match"} - Added Time: ${formatTime(
+      data.addedSeconds
+    )}`;
+}
+
+        document.getElementById("timeInfo").textContent =
+          timeText;
+
+        document.getElementById(
+          "updatedAt"
+        ).textContent = formatUpdatedAt(data.updatedAt);
+
+        const commentsList =
+          document.getElementById("commentsList");
+
+        const comments = data.comments || [];
+
+        if (comments.length === 0) {
+          commentsList.textContent = "No comments yet.";
+        } else {
+          commentsList.innerHTML = comments
+            .slice()
+            .reverse()
+            .map((comment) => {
+              return `
+                <div class="comment-item">
+                  <span class="comment-time">
+                    ${comment.time || ""}
+                  </span>
+                  ${comment.text || ""}
+                </div>
+              `;
+            })
+            .join("");
+        }
+      },
+            (error) => {
+        status.innerHTML =
+          '<span class="error">Could not load live match.</span>';
+
+        console.error(error);
+      }
+    );
+
+    setInterval(() => {
+      const sinBinInfo = document.getElementById("sinBinInfo");
+const sinBinLines = [];
+
+if (localTeam1SinBin !== null && localTeam1SinBin > 0) {
+  sinBinLines.push(
+    `🟨 ${document.getElementById("teamName")?.textContent || "Team 1"} Sin Bin — ${formatTime(localTeam1SinBin)}`
+  );
+}
+
+if (localTeam2SinBin !== null && localTeam2SinBin > 0) {
+  sinBinLines.push(
+    `🟨 ${document.getElementById("oppositionName")?.textContent || "Team 2"} Sin Bin — ${formatTime(localTeam2SinBin)}`
+  );
+}
+
+if (sinBinInfo) {
+  if (sinBinLines.length > 0) {
+    sinBinInfo.innerHTML = sinBinLines.join("<br>");
+    sinBinInfo.style.display = "block";
+  } else {
+    sinBinInfo.innerHTML = "";
+    sinBinInfo.style.display = "none";
+  }
+}
+      const status = (localMatchStatus || "").toLowerCase();
+
+      const timerShouldRun =
+  !status.includes("half time") &&
+  !status.includes("full time") &&
+  !status.includes("extra time ready") &&
+  (
+    status.includes("match started") ||
+    status.includes("1st half") ||
+    status.includes("2nd half") ||
+    status.includes("extra time")
+  );
+
+      if (!timerShouldRun) return;
+
+      if (localTeam1SinBin !== null && localTeam1SinBin > 0) {
+  localTeam1SinBin -= 1;
+}
+
+if (localTeam2SinBin !== null && localTeam2SinBin > 0) {
+  localTeam2SinBin -= 1;
+}
+
+      if (localSeconds > 0) {
+        localSeconds -= 1;
+      } else {
+        localAddedSeconds += 1;
+      }
+
+      let timeText = "";
+      const halfText = (localCurrentHalf || "").toLowerCase();
+
+      if (
+        halfText.includes("extra time") &&
+        halfText.includes("1st half")
+      ) {
+        if (localSeconds > 0) {
+          timeText =
+            `1st Half ET - Time Remaining: ${formatTime(localSeconds)}`;
+        } else {
+          timeText =
+            `1st Half ET - Added Time: ${formatTime(localAddedSeconds)}`;
+        }
+      } else if (
+        halfText.includes("extra time") &&
+        halfText.includes("2nd half")
+      ) {
+        if (localSeconds > 0) {
+          timeText =
+            `2nd Half ET - Time Remaining: ${formatTime(localSeconds)}`;
+        } else {
+          timeText =
+            `2nd Half ET - Added Time: ${formatTime(localAddedSeconds)}`;
+        }
+      } else if (localSeconds > 0) {
+        timeText =
+          `${localCurrentHalf || "Match"} - Time Remaining: ${formatTime(localSeconds)}`;
+      } else {
+        timeText =
+          `${localCurrentHalf || "Match"} - Added Time: ${formatTime(localAddedSeconds)}`;
+      }
+
+      document.getElementById("timeInfo").textContent =
+        timeText;
+    }, 1000);
+
+  }
+</script>
+  </body>
+</html>
