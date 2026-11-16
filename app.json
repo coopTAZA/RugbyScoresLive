@@ -8,7 +8,6 @@
     "scheme": "rugbyscoreslive",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.sidelinesportstech.rugbyscoreslive",
@@ -18,7 +17,6 @@
         "ITSAppUsesNonExemptEncryption": false
       }
     },
-
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -30,12 +28,10 @@
       "package": "com.sidelinesportstech.rugbyscoreslive",
       "versionCode": 1
     },
-
     "web": {
       "output": "static",
       "favicon": "./assets/images/favicon.png"
     },
-
     "plugins": [
       "expo-router",
       [
@@ -52,14 +48,15 @@
       "expo-status-bar",
       "expo-web-browser"
     ],
-
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
     },
-
     "extra": {
-      "router": {}
+      "router": {},
+      "eas": {
+        "projectId": "cf895ffa-2f16-4022-90fa-c353bc3af737"
+      }
     }
   }
 }
